@@ -4,6 +4,7 @@
     "displayName": "VR Emotion Detector",
     "description": "A package that helps with emotion detection in VR",
     "unity": "6.0",
+    "license": "MIT",
     "author": {
         "name": "VCU SWIM Lab",
         "email": "taret@vcu.edu"

@@ -12,8 +12,6 @@ A library for detecting emotions in VR.
 5. Now go to Unity's `Hierarchy` tab and pick one game object that you want to use as a predictor. From there on `Inspector > Add Component > Emotion Predictor`. Then click on the `Config` field of `Emotion Predictor` and select the `PredictorConfig` asset you created earlier.
 6. Create a new `MonoBehavior` script to use the predictions from the model and attach it to the same game object. Open the script in your editor of choice and change the code to look like following:
 ```cs
-using Oculus.Interaction;
-
 [RequireComponent(typeof(EmotionPredictor))]
 [RequireComponent(typeof(OVRFaceExpressions))]
 // ^ add these lines

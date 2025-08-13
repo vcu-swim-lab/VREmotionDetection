@@ -1,19 +1,52 @@
-
 # VREmotionDetection
 
-A library for detecting emotions in VR.
+**VREmotionDetection** is a Unity library for detecting and interpreting emotions in VR using machine learning models.  
 
-## Installation
 
-1. Open your Unity game, go to `Window > Package Manager`.
-2. Top-left corner, click on `+ > Install package from git URL..`, paste [https://github.com/vcu-swim-lab/VREmotionDetection.git]() and then click `Install`.
+## 📦 Installation
 
-## Configuration
+1. In your Unity project, open **`Window > Package Manager`**.  
+2. In the top-left corner, click **`+` > `Install package from git URL...`**  
+3. Paste the following URL:  
 
-1. Go to `Assets`, then right click and `Create > Scriptable Objects > PredictorConfig`.
-2. Click the created `PredictorConfig`, and then `Au Model`. From there pick `natural_trial_96.onnx`. Also enable `Poll By Default` if you want the predictor to start reading data starting from initialization, otherwise you have to manually enable polling later from your script, as shown in the example below.
-3. Now go to Unity's `Hierarchy` tab and pick one game object that you want to use as a predictor. From there on `Inspector > Add Component > Emotion Predictor`. Then click on the `Config` field of `Emotion Predictor` and select the `PredictorConfig` asset you created earlier.
+   ```
+   https://github.com/vcu-swim-lab/VREmotionDetection.git
+   ```
 
-## Usage
+4. Click **Install**.
 
-Create a new `MonoBehavior` script to use the predictions from the model and attach it to the same game object. Open the script in your editor of choice and copy paste the [script](./Samples~/Basic/MyScript.cs) found in the samples folder. With this you can 
+
+## ⚙️ Configuration
+
+### 1. Create a Predictor Config
+1. In Unity, go to **`Assets`**.  
+2. Right-click and choose **`Create > Scriptable Objects > PredictorConfig`**.
+
+### 2. Set Up the Model
+1. Select the newly created **PredictorConfig** asset.  
+2. In the **`Au Model`** field, choose:  
+   ```
+   natural_trial_96.onnx
+   ```
+3. (Optional) Enable **`Poll By Default`** if you want the predictor to start reading data automatically on initialization.  
+   - If disabled, you must manually start polling from your script (see [Usage](#-usage)).
+
+### 3. Attach the Emotion Predictor
+1. In the **Hierarchy**, select the GameObject you want to use for prediction.  
+2. In the **Inspector**, click **`Add Component`** and choose **`Emotion Predictor`**.  
+3. In the `Config` field of **Emotion Predictor**, select the **PredictorConfig** asset you created.
+
+
+## ▶ Usage
+
+1. Create a new **MonoBehaviour** script and attach it to the same GameObject as the Emotion Predictor.  
+2. Open the script in your code editor.  
+3. Copy and paste the sample code from:  
+   [`Samples~/Basic/MyScript.cs`](./Samples~/Basic/MyScript.cs)  
+
+This script will give you direct access to the predictions from the emotion detection model.
+
+
+## 📝 License
+
+This project is licensed under the [MIT License](./LICENSE).

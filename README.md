@@ -43,7 +43,7 @@
 1. Create a new **MonoBehaviour** script and attach it to the same GameObject as the Emotion Predictor.  
 2. Open the script in your code editor.  
 3. Copy and paste the sample code from:  
-   [`Samples~/Basic/MyScript.cs`](./Samples~/Basic/MyScript.cs)  
+   [`Samples~/Basic/MyScript.cs`](./Samples~/BasicUsage/BasicPredictor.cs).  
 
 This script will give you direct access to the predictions from the emotion detection model.
 

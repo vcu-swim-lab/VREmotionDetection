@@ -16,9 +16,9 @@
   },
   "samples": [
     {
-      "displayName": "Basic usage",
+      "displayName": "Basic Usage",
       "description": "Contains a basic setup for using the emotion predictor",
-      "path": "Samples~/Basic"
+      "path": "Samples~/BasicUsage"
     }
   ]
 }

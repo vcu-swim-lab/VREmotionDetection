@@ -13,5 +13,12 @@
     "com.unity.ai.inference": "2.2.1",
     "com.meta.xr.sdk.core": "77.0.0",
     "com.unity.xr.openxr": "1.15.0"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Basic usage",
+      "description": "Contains a basic setup for using the emotion predictor",
+      "path": "Samples~/Basic"
+    }
+  ]
 }

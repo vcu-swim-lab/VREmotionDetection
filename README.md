@@ -3,6 +3,11 @@
 
 **VREmotionDetection** is a Unity library for detecting emotions in VR using machine learning models.  
 
+## 📋 Prerequisites
+
+- Unity 6 or newer.
+- Meta Quest Pro if you want to use use action units for prediction.
+
 
 ## 📦 Installation
 

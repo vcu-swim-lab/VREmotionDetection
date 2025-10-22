@@ -174,7 +174,7 @@ public class SoundDevice : Device
 #endregion
 
 
-class DeviceManager : MonoBehaviour
+public class DeviceManager : MonoBehaviour
 {
     internal Dictionary<InputType, Type> allDevicesInProgram;
 

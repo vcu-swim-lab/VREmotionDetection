@@ -2,7 +2,7 @@ using Unity.InferenceEngine;
 using UnityEngine;
 
 [RequireComponent(typeof(OVRFaceExpressions))]
-class FaceAuModel : MonoBehaviour
+public class FaceAuModel : MonoBehaviour
 {
     [SerializeField]
     private ModelAsset modelAsset;

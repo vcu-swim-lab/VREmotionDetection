@@ -65,7 +65,7 @@ public class FaceAuModel : MonoBehaviour
 
     // TODO: `Predict` that doesn't wait on new data, just uses whatever is in the buffer.
 
-    public async Awaitable<(Emotion, float)> Predict(float naturalWeight = 1f, float actedWeight = 1f)
+    public async Awaitable<(Emotion, float)> PredictRaw()
     {
         inputBuffer.Clear();
 
@@ -77,13 +77,28 @@ public class FaceAuModel : MonoBehaviour
         // TODO: should you dispose the tensor?
         var input = inputBuffer.ToTensor();
 
-        var (nat, act) = await Infer(input);
+        return Infer(input);
+    }
+
+    private static readonly Dictionary<Emotion, float> naturalWeightMap = new()
+    {
+        { Emotion.Neutral, 0.5f },
+        { Emotion.Happiness, 0.3f },
+        { Emotion.Sadness, 0.7f },
+        { Emotion.Anger, 0.5f },
+        { Emotion.Fear, 0.5f },
+        { Emotion.Disgust, 1f },
+        { Emotion.Surprise, 0.3f },
+    };
+    public async Awaitable<(Emotion, float)> Predict()
+    {
+        var (nat, act) = await PredictRaw();
         var natArr = nat.AsReadOnlyNativeArray();
-        var actArr = nat.AsReadOnlyNativeArray();
+        var actArr = act.AsReadOnlyNativeArray();
 
         var outputArray = new NativeArray<float>(natArr.Length, Allocator.Temp);
         for (int i = 0; i < natArr.Length; ++i)
-            outputArray[i] = natArr[i] * naturalWeight + actArr[i] * actedWeight;
+            outputArray[i] = natArr[i] * naturalWeightMap[(Emotion)i] + actArr[i] * (1f - naturalWeightMap[(Emotion)i]);
 
         int maxIndex = 0;
         float maxValue = outputArray[0];

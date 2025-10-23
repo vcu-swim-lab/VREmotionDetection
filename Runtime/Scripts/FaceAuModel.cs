@@ -78,7 +78,7 @@ public class FaceAuModel : MonoBehaviour
         // TODO: should you dispose the tensor?
         var input = inputBuffer.ToTensor();
 
-        return Infer(input);
+        return await Infer(input);
     }
 
     private static readonly Dictionary<Emotion, float> naturalWeightMap = new()

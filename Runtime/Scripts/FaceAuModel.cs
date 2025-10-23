@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Unity.InferenceEngine;
+using Unity.Collections;
 using UnityEngine;
 
 [RequireComponent(typeof(OVRFaceExpressions))]

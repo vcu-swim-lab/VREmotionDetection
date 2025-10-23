@@ -66,7 +66,7 @@ public class FaceAuModel : MonoBehaviour
 
     // TODO: `Predict` that doesn't wait on new data, just uses whatever is in the buffer.
 
-    public async Awaitable<(Emotion, float)> PredictRaw()
+    public async Awaitable<(Tensor<float>, Tensor<float>)> PredictRaw()
     {
         inputBuffer.Clear();
 

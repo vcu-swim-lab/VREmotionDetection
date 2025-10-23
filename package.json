@@ -1,6 +1,6 @@
 {
   "name": "com.vcu-swim-lab.vr-emotion-detection",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "displayName": "VR Emotion Detector",
   "description": "A package that helps with emotion detection in VR",
   "unity": "2024.0",

@@ -179,6 +179,7 @@ public class DeviceManager : MonoBehaviour
     internal Dictionary<InputType, Type> allDevicesInProgram;
 
     internal Dictionary<InputType, Device> devices = new();
+    // TODO: v-- this is only used by the inspector
     internal bool[] enabledInput = new bool[(int)InputType.Count];
 
     private readonly Dictionary<InputType, float> nextPollTime = new();

@@ -78,10 +78,10 @@ public class FaceAuModel : MonoBehaviour
         var input = inputBuffer.ToTensor();
 
         var (nat, act) = await Infer(input);
-        using var natArr = nat.AsReadOnlyNativeArray();
-        using var actArr = nat.AsReadOnlyNativeArray();
+        var natArr = nat.AsReadOnlyNativeArray();
+        var actArr = nat.AsReadOnlyNativeArray();
 
-        using var outputArray = new NativeArray<float>(natArr.Length, Allocator.Temp);
+        var outputArray = new NativeArray<float>(natArr.Length, Allocator.Temp);
         for (int i = 0; i < natArr.Length; ++i)
             outputArray[i] = natArr[i] * naturalWeight + actArr[i] * actedWeight;
 

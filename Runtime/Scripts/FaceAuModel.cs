@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Unity.InferenceEngine;
 using UnityEngine;
 
@@ -5,21 +6,32 @@ using UnityEngine;
 public class FaceAuModel : MonoBehaviour
 {
     [SerializeField]
-    private ModelAsset modelAsset;
+    private ModelAsset naturalModel;
+    [SerializeField]
+    private ModelAsset actedModel;
 
-    private Model model;
-    private Worker worker;
+    private Model naturalModelObject;
+    private Model actedModelObject;
+
+    private Worker naturalWorker;
+    private Worker actedWorker;
 
     private RingBuffer<float[]> inputBuffer;
 
     public void Start()
     {
-        model = ModelLoader.Load(modelAsset);
-        worker = new Worker(model, BackendType.CPU);
+        Debug.Assert(naturalModel != null, $"Natural model not assigned in ${nameof(this)}");
+        Debug.Assert(actedModel != null, $"Acted model not assigned in ${nameof(this)}");
+
+        naturalModelObject = ModelLoader.Load(naturalModel);
+        naturalWorker = new Worker(naturalModelObject, BackendType.CPU);
+
+        actedModelObject = ModelLoader.Load(actedModel);
+        actedWorker = new Worker(actedModelObject, BackendType.CPU);
 
         if (!TryGetComponent<DeviceManager>(out var deviceManager))
         {
-            Debug.LogError("FaceAuModel requires a DeviceManager to be attached to the same GameObject.");
+            Debug.LogError($"{nameof(this)} requires a DeviceManager to be attached to the same GameObject.");
             return;
         }
 
@@ -35,16 +47,22 @@ public class FaceAuModel : MonoBehaviour
         Debug.Log("FaceAuModel initialized.");
     }
 
-    async Awaitable<Tensor<float>> Infer(Tensor<float> input)
+    async Awaitable<(Tensor<float>, Tensor<float>)> Infer(Tensor<float> input)
     {
-        worker.Schedule(input);
-        var tensor = await worker.PeekOutput().ReadbackAndCloneAsync();
-        return tensor as Tensor<float>;
+        naturalWorker.Schedule(input);
+        actedWorker.Schedule(input);
+
+        var naturalTensor = await naturalWorker.PeekOutput().ReadbackAndCloneAsync();
+        var actedTensor = await actedWorker.PeekOutput().ReadbackAndCloneAsync();
+        return (
+            naturalTensor as Tensor<float>,
+            actedTensor as Tensor<float>//
+        );
     }
 
     // TODO: `Predict` that doesn't wait on new data, just uses whatever is in the buffer.
 
-    public async Awaitable<(Emotion, float)> Predict()
+    public async Awaitable<(Emotion, float)> Predict(float naturalWeight = 1f, float actedWeight = 1f)
     {
         inputBuffer.Clear();
 
@@ -56,8 +74,15 @@ public class FaceAuModel : MonoBehaviour
         // TODO: should you dispose the tensor?
         var input = inputBuffer.ToTensor();
 
-        using var output = await Infer(input);
-        var outputArray = output.AsReadOnlyNativeArray();
+        using Tensor<float> nat, act;
+
+        (nat, act) = await Infer(input);
+        using var natArr = nat.AsReadOnlyNativeArray();
+        using var actArr = nat.AsReadOnlyNativeArray();
+
+        using var outputArray = new NativeArray<float>(natArr.Length, Allocator.Temp);
+        for (int i = 0; i < natArr.Length; ++i)
+            outputArray[i] = natArr[i] * naturalWeight + actArr[i] * actedWeight;
 
         int maxIndex = 0;
         float maxValue = outputArray[0];
@@ -76,6 +101,7 @@ public class FaceAuModel : MonoBehaviour
 
     public void Dispose()
     {
-        worker.Dispose();
+        naturalWorker.Dispose();
+        actedWorker.Dispose();
     }
 }

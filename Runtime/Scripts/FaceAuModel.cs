@@ -3,6 +3,8 @@ using Unity.InferenceEngine;
 using Unity.Collections;
 using UnityEngine;
 
+using Debug = UnityEngine.Debug;
+
 [RequireComponent(typeof(OVRFaceExpressions))]
 public class FaceAuModel : MonoBehaviour
 {
@@ -75,9 +77,7 @@ public class FaceAuModel : MonoBehaviour
         // TODO: should you dispose the tensor?
         var input = inputBuffer.ToTensor();
 
-        using Tensor<float> nat, act;
-
-        (nat, act) = await Infer(input);
+        var (nat, act) = await Infer(input);
         using var natArr = nat.AsReadOnlyNativeArray();
         using var actArr = nat.AsReadOnlyNativeArray();
 
@@ -95,6 +95,9 @@ public class FaceAuModel : MonoBehaviour
                 maxIndex = i;
             }
         }
+
+        nat.Dispose();
+        act.Dispose();
 
         return ((Emotion)maxIndex, maxValue);
     }

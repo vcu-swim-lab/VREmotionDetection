@@ -23,8 +23,8 @@ public class FaceAuModel : MonoBehaviour
 
     public void Start()
     {
-        Debug.Assert(naturalModel != null, $"Natural model not assigned in ${nameof(this)}");
-        Debug.Assert(actedModel != null, $"Acted model not assigned in ${nameof(this)}");
+        Debug.Assert(naturalModel != null, $"Natural model not assigned in ${GetType().Name}");
+        Debug.Assert(actedModel != null, $"Acted model not assigned in ${GetType().Name}");
 
         naturalModelObject = ModelLoader.Load(naturalModel);
         naturalWorker = new Worker(naturalModelObject, BackendType.CPU);
@@ -34,7 +34,7 @@ public class FaceAuModel : MonoBehaviour
 
         if (!TryGetComponent<DeviceManager>(out var deviceManager))
         {
-            Debug.LogError($"{nameof(this)} requires a DeviceManager to be attached to the same GameObject.");
+            Debug.LogError($"{GetType().Name} requires a DeviceManager to be attached to the same GameObject.");
             return;
         }
 

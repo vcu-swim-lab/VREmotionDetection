@@ -24,24 +24,9 @@
 
 ## ⚙️ Configuration
 
-### 1. Create a Predictor Config
-1. In Unity, go to **`Assets`**.  
-2. Right-click and choose **`Create > Scriptable Objects > PredictorConfig`**.
-
-### 2. Set Up the Model
-1. Select the newly created **PredictorConfig** asset.  
-2. In the **`Au Model`** field, choose:  
-   ```
-   natural_trial_96.onnx
-   ```
-3. (Optional) Enable **`Poll By Default`** if you want the predictor to start reading data automatically on initialization.  
-   - If disabled, you must manually start polling from your script (see [Usage](#-usage)).
-
-### 3. Attach the Emotion Predictor
-1. In the **Hierarchy**, select the GameObject you want to use for prediction.  
-2. In the **Inspector**, click **`Add Component`** and choose **`Emotion Predictor`**.  
-3. In the `Config` field of **Emotion Predictor**, select the **PredictorConfig** asset you created.
-
+1. In Unity, select the object that you want to add the predictor model from the **Hierarchy** tab.
+2. In the **Inspector** tab, click **Add Component**, then **Face Au Model**.
+3. In the **Natural Model** field, pick `natural_trial_96.onnx` and for the `Acted Model` field pick `act_trial_92.onnx`.
 
 ## ▶ Usage
 

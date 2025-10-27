@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using Debug = UnityEngine.Debug;
 
 [RequireComponent(typeof(OVRFaceExpressions))]
+[RequireComponent(typeof(DeviceManager))]
 public class FaceAuModel : MonoBehaviour
 {
     [SerializeField]
@@ -33,11 +34,7 @@ public class FaceAuModel : MonoBehaviour
         actedModelObject = ModelLoader.Load(actedModel);
         actedWorker = new Worker(actedModelObject, BackendType.CPU);
 
-        if (!TryGetComponent<DeviceManager>(out var deviceManager))
-        {
-            Debug.LogError($"{GetType().Name} requires a DeviceManager to be attached to the same GameObject.");
-            return;
-        }
+        var deviceManager = GetComponent<DeviceManager>();
 
         var auDevice = deviceManager.Require(InputType.FaceAU);
         if (auDevice == null)

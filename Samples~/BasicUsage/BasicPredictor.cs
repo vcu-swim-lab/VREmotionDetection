@@ -1,20 +1,15 @@
 
 using UnityEngine;
 
-[RequireComponent(typeof(EmotionPredictor))]
-[RequireComponent(typeof(OVRFaceExpressions))]
+[RequireComponent(typeof(FaceAuModel))]
 public class MyScript : MonoBehaviour
 {
-    private EmotionPredictor predictor;
+    private FaceAuModel auModel;
 
     void Start()
     {
         // ...
-        predictor = GetComponent<EmotionPredictor>();
-
-        // somewhere; write this if `Poll By Default` is false (which is the default value)
-        predictor.Polling = true;
-        // ^ you can set `Polling` to false at any time to stop polling data, eg. between scene transitions
+        auModel = GetComponent<FaceAuModel>();
 
         // Start the prediction task, use the predictor from there
         PredictTask();

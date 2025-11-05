@@ -20,7 +20,7 @@ public class RingBuffer<T>
     internal readonly T[] buffer;
     internal int counter = 0;
 
-    internal RingBuffer(int size, Func<T> defaultVal)
+    public RingBuffer(int size, Func<T> defaultVal)
     {
         buffer = new T[size];
         for (int i = 0; i < size; ++i)

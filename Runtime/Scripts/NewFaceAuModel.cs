@@ -42,7 +42,7 @@ public class NewFaceAuModel : MonoBehaviour
     async Awaitable<Tensor<float>> Infer(Tensor<float> input)
     {
         faceWorker.Schedule(input);
-        return await faceWorker.PeekOutput().ReadbackAndCloneAsync();
+        return await faceWorker.PeekOutput().ReadbackAndCloneAsync() as Tensor<float>;
     }
 
     // TODO: `Predict` that doesn't wait on new data, just uses whatever is in the buffer.

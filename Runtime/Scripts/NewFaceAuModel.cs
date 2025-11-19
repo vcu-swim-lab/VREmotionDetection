@@ -33,7 +33,7 @@ public class NewFaceAuModel : MonoBehaviour
             Debug.LogError("Could not create action units device!");
         }
 
-        inputBuffer = new(30, () => new float[70]);
+        inputBuffer = new(5, () => new float[70]);
         inputBuffer.Listen(auDevice);
 
         Debug.Log("NewFaceAuModel initialized.");

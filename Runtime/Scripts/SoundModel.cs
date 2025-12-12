@@ -87,8 +87,9 @@ public class SoundModel : MonoBehaviour
         voiceWorker.Dispose();
     }
 
-    private static Tensor<float> PrepareAudio(AudioClip originalClip)
+    public static Tensor<float> PrepareAudio(AudioClip originalClip)
     {
+        // TODO(Terens): add resampling at some point in the future
         int targetLengthSeconds = 30;
 
         int channels = originalClip.channels;
@@ -97,16 +98,9 @@ public class SoundModel : MonoBehaviour
         int targetSamples = targetLengthSeconds * frequency * channels;
 
         // Get original samples
-        float[] originalData = new float[originalClip.samples * channels];
+        float[] data = new float[targetSamples * channels];
         originalClip.GetData(originalData, 0);
 
-        // Create new padded sample array
-        float[] newData = new float[targetSamples];
-
-        // Copy original samples to start of new clip
-        for (int i = 0; i < originalData.Length; i++)
-            newData[i] = originalData[i];
-
-        return new Tensor<float>(new TensorShape(1, targetSamples), newData);
+        return new Tensor<float>(new TensorShape(1, targetSamples), data);
     }
 }

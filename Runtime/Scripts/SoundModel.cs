@@ -107,6 +107,6 @@ public class SoundModel : MonoBehaviour
         for (int i = 0; i < originalData.Length; i++)
             newData[i] = originalData[i];
 
-        return new Tensor<float>(new TensorShape(1, padded.samples), newData);
+        return new Tensor<float>(new TensorShape(1, targetSamples), newData);
     }
 }

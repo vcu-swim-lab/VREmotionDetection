@@ -95,7 +95,7 @@ public class SoundModel : MonoBehaviour
         int channels = originalClip.channels;
         int frequency = originalClip.frequency;
 
-        int targetSamples = targetLengthSeconds * frequency * channels;
+        int targetSamples = targetLengthSeconds * frequency;
 
         // Get original samples
         float[] data = new float[targetSamples];

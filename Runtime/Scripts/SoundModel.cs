@@ -98,7 +98,7 @@ public class SoundModel : MonoBehaviour
         int targetSamples = targetLengthSeconds * frequency * channels;
 
         // Get original samples
-        float[] data = new float[targetSamples * channels];
+        float[] data = new float[targetSamples];
         originalClip.GetData(data, 0);
 
         return new Tensor<float>(new TensorShape(1, targetSamples), data);

@@ -24,8 +24,6 @@ public class SoundModel : MonoBehaviour
     private Worker voiceWorker;
     private Worker logmelVoiceWorker;
 
-    // private RingBuffer<float[]> inputBuffer;
-
     void Start()
     {
         Debug.Assert(voiceModel != null, $"Voice model not assigned in ${GetType().Name}");
@@ -33,20 +31,8 @@ public class SoundModel : MonoBehaviour
         voiceModelObject = ModelLoader.Load(voiceModel);
         voiceWorker = new Worker(voiceModelObject, BackendType.CPU);
 
-
         logmelVoiceModelObject = ModelLoader.Load(logmelVoiceModel);
         logmelVoiceWorker = new Worker(logmelVoiceModelObject, BackendType.CPU);
-
-        // var deviceManager = GetComponent<DeviceManager>();
-
-        // var voiceDevice = deviceManager.Require(InputType.Sound);
-        // if (voiceDevice == null)
-        // {
-        //     Debug.LogError("Could not create microphone!");
-        // }
-
-        // inputBuffer = new(30, () => new float[16000]);
-        // inputBuffer.Listen(voiceDevice);
 
         Debug.Log("SoundModel initialized.");
     }
@@ -63,30 +49,9 @@ public class SoundModel : MonoBehaviour
         return voiceTensor as Tensor<float>;
     }
 
-    // TODO: `Predict` that doesn't wait on new data, just uses whatever is in the buffer.
-
     public async Awaitable<Tensor<float>> PredictRaw(Tensor<float> audioInput = null)
     {
-        Tensor<float> input;
-
-        // if (audioInput != null)
-        // {
-            input = audioInput;
-        // }
-        // else
-        // {
-        //     inputBuffer.Clear();
-
-        //     while (!inputBuffer.Full)
-        //     {
-        //         await Awaitable.NextFrameAsync();
-        //     }
-
-        //     // TODO: should you dispose the tensor?
-        //     input = inputBuffer.ToTensor();
-        // }
-
-        return await Infer(input);
+        return await Infer(audioInput);
     }
 
 
@@ -111,9 +76,37 @@ public class SoundModel : MonoBehaviour
         return ((Emotion)maxIndex, maxValue);
     }
 
+    public async Awaitable<(Emotion, float)> Predict(AudioClip clip)
+    {
+        var norm = PrepareAudio(clip);
+        return await Predict(norm);
+    }
 
     public void Dispose()
     {
         voiceWorker.Dispose();
+    }
+
+    private static Tensor<float> PrepareAudio(AudioClip originalClip)
+    {
+        int targetLengthSeconds = 30;
+
+        int channels = originalClip.channels;
+        int frequency = originalClip.frequency;
+
+        int targetSamples = targetLengthSeconds * frequency * channels;
+
+        // Get original samples
+        float[] originalData = new float[originalClip.samples * channels];
+        originalClip.GetData(originalData, 0);
+
+        // Create new padded sample array
+        float[] newData = new float[targetSamples];
+
+        // Copy original samples to start of new clip
+        for (int i = 0; i < originalData.Length; i++)
+            newData[i] = originalData[i];
+
+        return new Tensor<float>(new TensorShape(1, padded.samples), newData);
     }
 }

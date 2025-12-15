@@ -13,6 +13,6 @@ internal static class Utils
         var softmax = Functional.Softmax(outs[0]);
 
         fg.AddOutput(softmax);
-        return graph.Compile();
+        return fg.Compile();
     }
 }

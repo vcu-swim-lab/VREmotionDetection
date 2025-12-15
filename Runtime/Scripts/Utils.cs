@@ -1,9 +1,9 @@
 using Unity.InferenceEngine;
 
-static class Utils
+internal static class Utils
 {
     // Load the model asset and add softmax to the model's output
-    static Model PrepareModel(ModelAsset asset)
+    internal static Model PrepareModel(ModelAsset asset)
     {
         var src = ModelLoader.Load(asset);
 

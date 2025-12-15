@@ -55,7 +55,7 @@ public class SoundModel : MonoBehaviour
 
     public async Awaitable<(Emotion, float)> Predict(Tensor<float> audioInput = null)
     {
-        var voiceTensor = await PredictRaw(audioInput);
+        using var voiceTensor = await PredictRaw(audioInput);
         var voiceArr = voiceTensor.AsReadOnlyNativeArray();
 
         int maxIndex = 0;
@@ -68,8 +68,6 @@ public class SoundModel : MonoBehaviour
                 maxIndex = i;
             }
         }
-
-        voiceTensor.Dispose();
 
         return ((Emotion)maxIndex, maxValue);
     }

@@ -78,8 +78,6 @@ public class NewFaceAuModel : MonoBehaviour
             }
         }
 
-        face.Dispose();
-
         return ((Emotion)maxIndex, maxValue);
     }
 

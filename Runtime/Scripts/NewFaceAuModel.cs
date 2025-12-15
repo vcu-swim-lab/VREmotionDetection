@@ -22,8 +22,8 @@ public class NewFaceAuModel : MonoBehaviour
     {
         Debug.Assert(faceModel != null, $"Face model not assigned in ${GetType().Name}");
 
-        faceModelObject = ModelLoader.Load(faceModel);
-        faceWorker = new Worker(faceModelObject, BackendType.CPU);
+        faceModelObject = Utils.PrepareModel(faceModel);
+        faceWorker = new Worker(faceModelObject, BackendType.GPUCompute);
 
         var deviceManager = GetComponent<DeviceManager>();
 
@@ -84,7 +84,7 @@ public class NewFaceAuModel : MonoBehaviour
     }
 
 
-    public void Dispose()
+    void OnDisable()
     {
         faceWorker.Dispose();
     }

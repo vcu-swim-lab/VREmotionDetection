@@ -10,29 +10,28 @@ using Mono.Cecil;
 // [RequireComponent(typeof(DeviceManager))]
 public class SoundModel : MonoBehaviour
 {
-    // logmel
+    [SerializeField]
+    private ModelAsset logmelVoiceModel;
 
     [SerializeField]
     private ModelAsset voiceModel;
 
-    [SerializeField]
-    private ModelAsset logmelVoiceModel;
-
-    private Model voiceModelObject;
     private Model logmelVoiceModelObject;
+    private Model voiceModelObject;
 
-    private Worker voiceWorker;
     private Worker logmelVoiceWorker;
+    private Worker voiceWorker;
 
     void Start()
     {
+        Debug.Assert(logmelVoiceModel != null, $"Logmel model not assigned in ${GetType().Name}");
         Debug.Assert(voiceModel != null, $"Voice model not assigned in ${GetType().Name}");
 
-        voiceModelObject = ModelLoader.Load(voiceModel);
-        voiceWorker = new Worker(voiceModelObject, BackendType.CPU);
-
         logmelVoiceModelObject = ModelLoader.Load(logmelVoiceModel);
-        logmelVoiceWorker = new Worker(logmelVoiceModelObject, BackendType.CPU);
+        logmelVoiceWorker = new Worker(logmelVoiceModelObject, BackendType.GPUCompute);
+
+        voiceModelObject = Utils.PrepareModel(voiceModel);
+        voiceWorker = new Worker(voiceModelObject, BackendType.GPUCompute);
 
         Debug.Log("SoundModel initialized.");
     }
@@ -82,11 +81,6 @@ public class SoundModel : MonoBehaviour
         return await Predict(norm);
     }
 
-    public void Dispose()
-    {
-        voiceWorker.Dispose();
-    }
-
     public static Tensor<float> PrepareAudio(AudioClip originalClip)
     {
         // TODO(Terens): add resampling at some point in the future
@@ -102,5 +96,10 @@ public class SoundModel : MonoBehaviour
         originalClip.GetData(data, 0);
 
         return new Tensor<float>(new TensorShape(1, targetSamples), data);
+    }
+
+    void OnDisable()
+    {
+        voiceWorker.Dispose();
     }
 }

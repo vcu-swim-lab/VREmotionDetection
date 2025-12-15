@@ -28,11 +28,11 @@ public class FaceAuModel : MonoBehaviour
         Debug.Assert(naturalModel != null, $"Natural model not assigned in ${GetType().Name}");
         Debug.Assert(actedModel != null, $"Acted model not assigned in ${GetType().Name}");
 
-        naturalModelObject = ModelLoader.Load(naturalModel);
-        naturalWorker = new Worker(naturalModelObject, BackendType.CPU);
+        naturalModelObject = Utils.PrepareModel(naturalModel);
+        naturalWorker = new Worker(naturalModelObject, BackendType.GPUCompute);
 
-        actedModelObject = ModelLoader.Load(actedModel);
-        actedWorker = new Worker(actedModelObject, BackendType.CPU);
+        actedModelObject = Utils.PrepareModel(actedModel);
+        actedWorker = new Worker(actedModelObject, BackendType.GPUCompute);
 
         var deviceManager = GetComponent<DeviceManager>();
 
@@ -116,7 +116,7 @@ public class FaceAuModel : MonoBehaviour
     }
 
 
-    public void Dispose()
+    void OnDisable()
     {
         naturalWorker.Dispose();
         actedWorker.Dispose();

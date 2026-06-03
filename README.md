@@ -37,10 +37,9 @@
 
 This script will give you direct access to the predictions from the emotion detection model.
 
-© 2026 Virginia Commonwealth University, All rights reserved.
-
-
 
 ## 📝 License
 
 This project is licensed under the [MIT License](./LICENSE).
+
+© 2026 Virginia Commonwealth University, All rights reserved.

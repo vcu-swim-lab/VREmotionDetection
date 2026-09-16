@@ -1,0 +1,22 @@
+{
+    "name": "VREmotionDetection.Editor.Tests",
+    "rootNamespace": "",
+    "references": [
+        "VREmotionDetection",
+        "GUID:63a57c8b658089e49a173b0f0c4870a7"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

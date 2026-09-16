@@ -28,10 +28,13 @@ public class FaceAuModel : MonoBehaviour
         Debug.Assert(naturalModel != null, $"Natural model not assigned in ${GetType().Name}");
         Debug.Assert(actedModel != null, $"Acted model not assigned in ${GetType().Name}");
 
-        naturalModelObject = Utils.PrepareModel(naturalModel);
+        // `natural_trial_96.onnx` and `act_trial_92.onnx` both already end in a Softmax
+        // node and output probabilities; appending another would corrupt the weighted
+        // blend in `Predict` below, which assumes both inputs are on a probability scale.
+        naturalModelObject = Utils.PrepareModel(naturalModel, appendSoftmax: false);
         naturalWorker = new Worker(naturalModelObject, BackendType.GPUCompute);
 
-        actedModelObject = Utils.PrepareModel(actedModel);
+        actedModelObject = Utils.PrepareModel(actedModel, appendSoftmax: false);
         actedWorker = new Worker(actedModelObject, BackendType.GPUCompute);
 
         var deviceManager = GetComponent<DeviceManager>();

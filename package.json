@@ -24,6 +24,11 @@
       "displayName": "Movement Calibration",
       "description": "Calibrates the predictor to one player's faces, then predicts with it",
       "path": "Samples~/MovementCalibration"
+    },
+    {
+      "displayName": "Calibration Check",
+      "description": "On the headset: calibrate, then compare uncalibrated and calibrated predictions on the same face data",
+      "path": "Samples~/CalibrationCheck"
     }
   ]
 }

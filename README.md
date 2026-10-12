@@ -114,6 +114,10 @@ change, `LoadCalibration` refuses it and the player calibrates again.
 
 A full example is in [`Samples~/MovementCalibration`](./Samples~/MovementCalibration/CalibratedPredictor.cs).
 
+**Check it on your headset:** the [`Samples~/CalibrationCheck`](./Samples~/CalibrationCheck/CalibrationCheck.cs)
+sample calibrates, then asks for each face again and reports the uncalibrated and the calibrated
+answer for the same predictions, with your own Quest Pro face data.
+
 
 ## 📊 Results
 

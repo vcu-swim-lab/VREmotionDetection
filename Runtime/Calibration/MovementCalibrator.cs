@@ -218,6 +218,90 @@ namespace VcuSwimLab.Calibration
             }
         }
 
+        /// <summary>
+        /// The finished calibration as plain arrays, for saving per user. Null when not ready.
+        /// </summary>
+        /// <remarks>
+        /// These vectors describe one person's face. Keep them on the user's device and never
+        /// in the model asset or a repository.
+        /// </remarks>
+        public CalibrationProfile ExportProfile()
+        {
+            if (!IsReady) return null;
+
+            return new CalibrationProfile(ImplementationVersion, classNames, Copy(scoreCentroids),
+                                          Copy(movementCentroids));
+        }
+
+        /// <summary>
+        /// A ready calibrator from a saved profile, or null with `error` set when the profile
+        /// is from another implementation, has other classes, or is malformed.
+        /// </summary>
+        public static MovementCalibrator FromProfile(CalibrationProfile profile,
+                                                     IReadOnlyList<string> classNames, out string error)
+        {
+            error = null;
+            if (profile == null) { error = "no profile"; return null; }
+
+            if (profile.ImplementationVersion != ImplementationVersion)
+            {
+                error = $"the profile was made by {profile.ImplementationVersion}, this is {ImplementationVersion}";
+                return null;
+            }
+
+            if (profile.ClassNames == null || profile.ClassNames.Length != classNames.Count)
+            {
+                error = "the profile has a different number of classes";
+                return null;
+            }
+
+            for (int c = 0; c < classNames.Count; ++c)
+            {
+                if (profile.ClassNames[c] != classNames[c])
+                {
+                    error = $"class {c} is '{profile.ClassNames[c]}' in the profile but '{classNames[c]}' here";
+                    return null;
+                }
+            }
+
+            if (!Valid(profile.ScoreCentroids, classNames.Count, classNames.Count)
+                || !Valid(profile.MovementCentroids, classNames.Count, CalibrationMath.FaceActionUnitCount))
+            {
+                error = "the profile's centroids have the wrong shape or are not finite";
+                return null;
+            }
+
+            var calibrator = new MovementCalibrator(classNames)
+            {
+                scoreCentroids = Copy(profile.ScoreCentroids),
+                movementCentroids = Copy(profile.MovementCentroids),
+                IsReady = true,
+            };
+            return calibrator;
+        }
+
+        private static bool Valid(double[][] matrix, int rows, int width)
+        {
+            if (matrix == null || matrix.Length != rows) return false;
+            foreach (var row in matrix)
+            {
+                if (row == null || row.Length != width) return false;
+                foreach (double v in row)
+                {
+                    if (double.IsNaN(v) || double.IsInfinity(v)) return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static double[][] Copy(double[][] source)
+        {
+            var copy = new double[source.Length][];
+            for (int i = 0; i < source.Length; ++i) copy[i] = (double[])source[i].Clone();
+            return copy;
+        }
+
         private void CheckClass(int classIndex)
         {
             if (classIndex < 0 || classIndex >= classNames.Length)

@@ -1,12 +1,15 @@
 
 # VREmotionDetection
 
-**VREmotionDetection** is a Unity library for detecting emotions in VR using machine learning models.  
+**VREmotionDetection** is a Unity library for detecting emotions in VR from the face-tracking
+data of a Meta Quest Pro. It predicts seven emotions: Anger, Disgust, Fear, Happiness,
+Neutral, Sadness and Surprise. An optional calibration adapts it to each player.
 
 ## 📋 Prerequisites
 
 - Unity 6 or newer.
-- Meta Quest Pro if you want to use use action units for prediction.
+- Meta Quest Pro (its inward cameras provide the face tracking the model needs).
+- Meta XR Core SDK with face tracking enabled for the project.
 
 
 ## 📦 Installation
@@ -22,26 +25,58 @@
 4. Click **Install**.
 
 
-## ⚙️ Configuration
+## ⚙️ Setup
 
-1. In Unity, select the object that you want to add the predictor model from the **Hierarchy** tab.
-2. In the **Inspector** tab, click **Add Component**, then **Face Au Model**.
-3. In the **Natural Model** field, pick `natural_trial_96.onnx` and for the `Acted Model` field pick `act_trial_92.onnx`.
+1. Select the GameObject that should run the predictor in the **Hierarchy**.
+2. In the **Inspector**, click **Add Component** and add **New Face Au Model**. It also adds
+   `OVRFaceExpressions` and `DeviceManager`.
+3. The **Face Model** field is filled in automatically with
+   `sparseVR_teacher_model_acted_only_vol-aug-k1_with-EmojiHero.onnx`, the acted-data model.
+   If it is empty, pick that file from `Runtime/Models`.
+
+`FaceAuModel`, the original predictor that combined a natural-data and an acted-data model, is
+obsolete. Use `NewFaceAuModel`.
+
+
+## 🧠 Model input and output
+
+The predictor builds the input itself; this is what it does, for anyone feeding the model
+directly.
+
+| | |
+|---|---|
+| Values per frame | 70: the `OVRFaceExpressions` face-tracking weights, in its `FaceExpression` order (`BrowLowererL` … `TongueRetreat`) |
+| Range and scaling | Raw weights, 0 to 1. No scaling or normalisation |
+| Window | 5 consecutive frames, oldest first, read at 10 Hz (half a second) |
+| Missing tracking | Frames without valid face tracking are dropped, never filled with zeros |
+| Input tensor | `[N, 5, 70]`, float32 |
+| Output | 7 probabilities that sum to 1, in `Emotion` order: Anger, Disgust, Fear, Happiness, Neutral, Sadness, Surprise |
+
+The model was trained on acted expressions (posed on request) recorded on the Quest Pro, with
+5-frame windows at about 10 Hz.
+
 
 ## ▶ Usage
 
-1. Create a new **MonoBehaviour** script and attach it to the same GameObject as the Emotion Predictor.  
-2. Open the script in your code editor.  
-3. Copy and paste the sample code from:  
-   [`Samples~/Basic/MyScript.cs`](./Samples~/BasicUsage/BasicPredictor.cs).  
+Add a script to the same GameObject and call the predictor:
 
-This script will give you direct access to the predictions from the emotion detection model.
+```csharp
+var predictor = GetComponent<NewFaceAuModel>();
 
-## 🎯 Movement calibration (optional)
+var (emotion, confidence) = await predictor.Predict();      // most likely emotion, 0 to 1
+
+var detailed = await predictor.PredictDetailed();          // null if tracking was lost
+float[] scores = detailed.Value.Scores;                     // all seven probabilities
+```
+
+A full example is in [`Samples~/BasicUsage`](./Samples~/BasicUsage/BasicPredictor.cs).
+
+
+## 🎯 Calibration (optional)
 
 People make the same emotion with different faces. Movement calibration learns how *this*
 player makes each emotion, then matches every prediction against the player's own faces.
-Without it, `Predict` works exactly as before.
+It is **off by default**: without it, `Predict` returns the model's own answer.
 
 ```csharp
 predictor.StartCalibration();
@@ -50,19 +85,34 @@ foreach (Emotion emotion in Enum.GetValues(typeof(Emotion)))
     // Ask the player to make this face and hold it, then:
     await predictor.CalibrateEmotion(emotion);   // about 10 seconds
 }
-predictor.FinishCalibration();                   // false if it failed; see CalibrationError
+if (predictor.FinishCalibration())               // false if it failed; see CalibrationError
+{
+    predictor.SaveCalibration("player1");        // optional: keep it for next time
+}
 
 var (emotion, confidence) = await predictor.Predict();   // now calibrated
 ```
 
-- Each emotion takes 10 samples, one per second. The first is dropped while the face is still changing.
-- Samples without face tracking are retried. If an emotion cannot be collected, `FinishCalibration`
-  returns `false`, `CalibrationError` says why, and `Predict` keeps using the model's own answer.
-- `IsCalibrated` tells you which one `Predict` is using. `ClearCalibration` goes back to the model's own answer.
-- A full example is in [`Samples~/MovementCalibration`](./Samples~/MovementCalibration/CalibratedPredictor.cs).
+| Method | What it does |
+|---|---|
+| `StartCalibration()` | Start a new calibration |
+| `CalibrateEmotion(emotion)` | Collect one emotion: 10 samples, one per second; the first is dropped while the face is still changing. Samples without tracking are retried |
+| `FinishCalibration()` | Build it. `false` when an emotion is missing; `CalibrationError` says why |
+| `SaveCalibration(userId)` / `LoadCalibration(userId)` | Save it for this player, or load and use a saved one |
+| `ClearCalibration()` | Stop using calibration; back to the model's own answer |
+| `DeleteSavedCalibration(userId)` | Delete the player's saved calibration from the device |
+| `IsCalibrated` | Whether `Predict` is using calibration |
 
-On the Quest Pro headset in our tests (10 sessions, mostly one person), movement calibration
-raised macro-F1 from 0.58 to 0.74. It has not yet been tested on many different people.
+How it decides: for each emotion, it adds two similarities — how close the model's scores are
+to this player's scores for that emotion, and how close the face movements are to this
+player's face for that emotion. The emotion with the highest sum wins.
+
+**Where calibration is stored.** A calibration describes one person's face. It is saved only
+on the device, in `Application.persistentDataPath/VREmotionDetection/calibration/<userId>.json`,
+never in the model asset or the build. It is tied to the model it was made with; after a model
+change, `LoadCalibration` refuses it and the player calibrates again.
+
+A full example is in [`Samples~/MovementCalibration`](./Samples~/MovementCalibration/CalibratedPredictor.cs).
 
 
 ## 📝 License

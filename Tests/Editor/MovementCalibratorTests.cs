@@ -145,6 +145,45 @@ public class MovementCalibratorTests
     }
 
     [Test]
+    public void A_saved_profile_restores_identical_decisions()
+    {
+        var original = Calibrated();
+        var restored = MovementCalibrator.FromProfile(original.ExportProfile(), Names, out string error);
+        Assert.IsNotNull(restored, error);
+        Assert.IsTrue(restored.IsReady);
+
+        var rng = new Random(7);
+        for (int i = 0; i < 50; ++i)
+        {
+            var scores = Scores(rng.Next(Classes));
+            var window = Window(rng.Next(Classes));
+            var a = original.Classify(scores, window).Value;
+            var b = restored.Classify(scores, window).Value;
+            Assert.AreEqual(a.ClassIndex, b.ClassIndex);
+            Assert.AreEqual(a.Margin, b.Margin, 0.0);
+        }
+    }
+
+    [Test]
+    public void A_mismatched_or_damaged_profile_is_refused()
+    {
+        var profile = Calibrated().ExportProfile();
+        Assert.IsNull(new MovementCalibrator(Names).ExportProfile(), "nothing to export before Finish");
+
+        var reordered = (string[])Names.Clone();
+        (reordered[0], reordered[1]) = (reordered[1], reordered[0]);
+        Assert.IsNull(MovementCalibrator.FromProfile(profile, reordered, out _));
+
+        var otherVersion = new CalibrationProfile("runtime-calibration-v0", profile.ClassNames,
+                                                  profile.ScoreCentroids, profile.MovementCentroids);
+        Assert.IsNull(MovementCalibrator.FromProfile(otherVersion, Names, out _));
+
+        profile.MovementCentroids[2][5] = double.NaN;
+        Assert.IsNull(MovementCalibrator.FromProfile(profile, Names, out string error));
+        StringAssert.Contains("not finite", error);
+    }
+
+    [Test]
     public void Observe_before_BeginEmotion_is_refused()
     {
         var calibrator = new MovementCalibrator(Names);

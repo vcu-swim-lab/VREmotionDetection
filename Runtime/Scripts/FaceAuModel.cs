@@ -6,6 +6,9 @@ using System.Collections.Generic;
 
 using Debug = UnityEngine.Debug;
 
+// The original predictor, combining a natural-data and an acted-data model. Kept so existing
+// scenes still load; new projects use `NewFaceAuModel`, which runs the acted-data model.
+[System.Obsolete("Use NewFaceAuModel, which runs the acted-data model and supports calibration.")]
 [RequireComponent(typeof(OVRFaceExpressions))]
 [RequireComponent(typeof(DeviceManager))]
 public class FaceAuModel : MonoBehaviour

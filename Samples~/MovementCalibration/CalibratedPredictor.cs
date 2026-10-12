@@ -2,11 +2,18 @@ using System;
 using UnityEngine;
 
 // Movement calibration: the player makes each of the seven faces once (about 10 seconds
-// each), then every prediction is matched against this player's own faces. Without
-// calibration, `Predict` works exactly as before.
+// each), then every prediction is matched against this player's own faces. The calibration
+// is saved on this device for the player, so next time it can be loaded instead of redone.
+// Without calibration, `Predict` works exactly as before.
 [RequireComponent(typeof(NewFaceAuModel))]
 public class CalibratedPredictor : MonoBehaviour
 {
+    // Any id your game uses for the player: letters, digits, '-' and '_'.
+    [SerializeField] private string playerId = "player1";
+
+    // Off: skip calibration and use the model's own answer.
+    [SerializeField] private bool useCalibration = true;
+
     private NewFaceAuModel predictor;
 
     void Start()
@@ -17,7 +24,21 @@ public class CalibratedPredictor : MonoBehaviour
 
     private async Awaitable Run()
     {
-        // 1. Calibrate. Skip this block to use the model without calibration.
+        if (useCalibration && !predictor.LoadCalibration(playerId))
+        {
+            await Calibrate();
+        }
+
+        // Calibrated when calibration succeeded, the model's own answer otherwise.
+        while (true)
+        {
+            var (emotion, confidence) = await predictor.Predict();
+            Debug.Log($"{emotion} ({confidence:F2}, calibrated: {predictor.IsCalibrated})");
+        }
+    }
+
+    private async Awaitable Calibrate()
+    {
         predictor.StartCalibration();
 
         foreach (Emotion emotion in Enum.GetValues(typeof(Emotion)))
@@ -31,17 +52,14 @@ public class CalibratedPredictor : MonoBehaviour
             }
         }
 
-        if (!predictor.FinishCalibration())
+        if (predictor.FinishCalibration())
+        {
+            predictor.SaveCalibration(playerId);
+        }
+        else
         {
             // The model still works; it is just not calibrated.
             Debug.LogWarning($"Calibration failed: {predictor.CalibrationError}");
-        }
-
-        // 2. Predict. Calibrated when calibration succeeded, the model's own answer otherwise.
-        while (true)
-        {
-            var (emotion, confidence) = await predictor.Predict();
-            Debug.Log($"{emotion} (calibrated: {predictor.IsCalibrated})");
         }
     }
 }

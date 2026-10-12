@@ -46,6 +46,16 @@ public readonly struct FacePrediction
     }
 }
 
+// The face emotion predictor, using one acted-data model.
+//
+// Model input, as the model was trained:
+//   - 70 values per frame: the Meta face-tracking weights of `OVRFaceExpressions`, in its
+//     `FaceExpression` order (BrowLowererL ... TongueRetreat), each 0 to 1;
+//   - raw values, no scaling or normalisation;
+//   - a window of 5 consecutive frames, oldest first, read at 10 Hz;
+//   - frames where face tracking is not valid are dropped, never filled with zeros.
+// Model output: 7 probabilities in `Emotion` order: Anger, Disgust, Fear, Happiness,
+// Neutral, Sadness, Surprise.
 [RequireComponent(typeof(OVRFaceExpressions))]
 [RequireComponent(typeof(DeviceManager))]
 public class NewFaceAuModel : MonoBehaviour
@@ -58,8 +68,25 @@ public class NewFaceAuModel : MonoBehaviour
     // caller is told the prediction could not be made.
     public const float DefaultTimeoutSeconds = 3f;
 
+    // The default model: acted data only, with volume augmentation and EmojiHero.
+    public const string DefaultModelPath =
+        "Packages/com.vcu-swim-lab.vr-emotion-detection/Runtime/Models/" +
+        "sparseVR_teacher_model_acted_only_vol-aug-k1_with-EmojiHero.onnx";
+
     [SerializeField]
     private ModelAsset faceModel;
+
+#if UNITY_EDITOR
+    // Unity calls this when the component is added, so the default model is assigned
+    // without searching for it.
+    void Reset()
+    {
+        if (faceModel == null)
+        {
+            faceModel = UnityEditor.AssetDatabase.LoadAssetAtPath<ModelAsset>(DefaultModelPath);
+        }
+    }
+#endif
 
     private Model faceModelObject;
     private Worker faceWorker;
@@ -197,23 +224,166 @@ public class NewFaceAuModel : MonoBehaviour
     //     if (!predictor.FinishCalibration()) Debug.LogWarning(predictor.CalibrationError);
 
     private MovementCalibrator calibrator;
+    private string loadError;
 
     // True when `Predict` is using movement calibration.
     public bool IsCalibrated => calibrator != null && calibrator.IsReady;
 
-    // Why calibration failed; empty when it did not, null when it never started.
-    public string CalibrationError => calibrator?.Error;
+    // Why calibration or loading failed; empty or null when nothing failed.
+    public string CalibrationError => loadError ?? calibrator?.Error;
 
     // Start a new calibration, forgetting any previous one.
     public void StartCalibration()
     {
+        loadError = null;
         calibrator = new MovementCalibrator(Enum.GetNames(typeof(Emotion)));
     }
 
-    // Stop using calibration; `Predict` goes back to the model's own answer.
+    // Stop using calibration; `Predict` goes back to the model's own answer. Saved
+    // calibrations on disk are kept; see `DeleteSavedCalibration`.
     public void ClearCalibration()
     {
+        loadError = null;
         calibrator = null;
+    }
+
+    // ---- Saving calibration per user ------------------------------------------------------
+    //
+    // A calibration describes one person's face. It is saved on this device only, under
+    // Application.persistentDataPath/VREmotionDetection/calibration/<userId>.json -- never in
+    // the model asset. It is tied to the model it was made with.
+
+    [Serializable]
+    private class SavedCalibration
+    {
+        public string implementationVersion;
+        public string faceModel;
+        public string savedUtc;
+        public string[] classNames;
+        public int scoreWidth;
+        public double[] scoreCentroids;
+        public int movementWidth;
+        public double[] movementCentroids;
+    }
+
+    // Where a user's calibration is saved. `userId`: letters, digits, '-' and '_' only.
+    public static string CalibrationPath(string userId)
+    {
+        if (string.IsNullOrEmpty(userId) || !System.Text.RegularExpressions.Regex.IsMatch(userId, "^[A-Za-z0-9_-]+$"))
+        {
+            throw new ArgumentException("userId may contain only letters, digits, '-' and '_'", nameof(userId));
+        }
+
+        return System.IO.Path.Combine(Application.persistentDataPath, "VREmotionDetection", "calibration",
+                                      userId + ".json");
+    }
+
+    public bool HasSavedCalibration(string userId) => System.IO.File.Exists(CalibrationPath(userId));
+
+    // Save the current calibration for this user. False when there is no finished calibration.
+    public bool SaveCalibration(string userId)
+    {
+        var profile = calibrator?.ExportProfile();
+        if (profile == null)
+        {
+            return false;
+        }
+
+        var saved = new SavedCalibration
+        {
+            implementationVersion = profile.ImplementationVersion,
+            faceModel = FaceModelName,
+            savedUtc = DateTime.UtcNow.ToString("o"),
+            classNames = profile.ClassNames,
+            scoreWidth = profile.ScoreCentroids[0].Length,
+            scoreCentroids = Flatten(profile.ScoreCentroids),
+            movementWidth = profile.MovementCentroids[0].Length,
+            movementCentroids = Flatten(profile.MovementCentroids),
+        };
+
+        string path = CalibrationPath(userId);
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
+        System.IO.File.WriteAllText(path, JsonUtility.ToJson(saved));
+        return true;
+    }
+
+    // Load and use this user's saved calibration. False, with `CalibrationError` set, when
+    // there is none, or it was made with another model, or it is damaged; `Predict` then
+    // keeps the model's own answer.
+    public bool LoadCalibration(string userId)
+    {
+        calibrator = null;
+        loadError = null;
+
+        string path = CalibrationPath(userId);
+        if (!System.IO.File.Exists(path))
+        {
+            loadError = $"no saved calibration for '{userId}'";
+            return false;
+        }
+
+        SavedCalibration saved;
+        try
+        {
+            saved = JsonUtility.FromJson<SavedCalibration>(System.IO.File.ReadAllText(path));
+        }
+        catch (Exception e)
+        {
+            loadError = $"the saved calibration for '{userId}' could not be read: {e.Message}";
+            return false;
+        }
+
+        if (saved == null || saved.faceModel != FaceModelName)
+        {
+            loadError = $"the saved calibration for '{userId}' was made with model " +
+                        $"'{saved?.faceModel}', not '{FaceModelName}'; calibrate again";
+            return false;
+        }
+
+        var profile = new CalibrationProfile(saved.implementationVersion, saved.classNames,
+                                             Unflatten(saved.scoreCentroids, saved.scoreWidth),
+                                             Unflatten(saved.movementCentroids, saved.movementWidth));
+
+        calibrator = MovementCalibrator.FromProfile(profile, Enum.GetNames(typeof(Emotion)), out string error);
+        if (calibrator == null)
+        {
+            loadError = $"the saved calibration for '{userId}' cannot be used: {error}";
+            return false;
+        }
+
+        return true;
+    }
+
+    // Delete this user's saved calibration from the device.
+    public void DeleteSavedCalibration(string userId)
+    {
+        string path = CalibrationPath(userId);
+        if (System.IO.File.Exists(path))
+        {
+            System.IO.File.Delete(path);
+        }
+    }
+
+    private static double[] Flatten(double[][] matrix)
+    {
+        int width = matrix[0].Length;
+        var flat = new double[matrix.Length * width];
+        for (int r = 0; r < matrix.Length; ++r) Array.Copy(matrix[r], 0, flat, r * width, width);
+        return flat;
+    }
+
+    private static double[][] Unflatten(double[] flat, int width)
+    {
+        if (flat == null || width <= 0 || flat.Length % width != 0) return null;
+
+        var matrix = new double[flat.Length / width][];
+        for (int r = 0; r < matrix.Length; ++r)
+        {
+            matrix[r] = new double[width];
+            Array.Copy(flat, r * width, matrix[r], 0, width);
+        }
+
+        return matrix;
     }
 
     // Collect one emotion while the player makes that face. Takes one sample per

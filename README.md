@@ -106,6 +106,8 @@ var (emotion, confidence) = await predictor.Predict();   // now calibrated
 | `ClearCalibration()` | Stop using calibration; back to the model's own answer |
 | `DeleteSavedCalibration(userId)` | Delete the player's saved calibration from the device |
 | `IsCalibrated` | Whether `Predict` is using calibration |
+| `BeginCalibrationEmotion(emotion)`, `AddCalibrationSample(position, prediction)` | Advanced: for games that take their own predictions on a fixed clock (e.g. a study protocol) instead of `CalibrateEmotion`. Position 0 is dropped; a tick without tracking is not retried |
+| `CalibratedDecision(prediction)` | The calibrated emotion with its similarity scores, for detailed logs |
 
 How it decides: for each emotion, it adds two similarities — how close the model's scores are
 to this player's scores for that emotion, and how close the face movements are to this

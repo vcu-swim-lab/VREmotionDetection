@@ -178,10 +178,17 @@ public class NewFaceAuModel : MonoBehaviour
 
     // Full prediction result, including the exact input window. Returns null when a
     // window of valid frames could not be collected before the timeout.
-    public async Awaitable<FacePrediction?> PredictDetailed(float timeoutSeconds = DefaultTimeoutSeconds)
+    // `saveResult`: false keeps this prediction out of the results file, e.g. for a sample
+    // that is only collected for calibration.
+    public async Awaitable<FacePrediction?> PredictDetailed(float timeoutSeconds = DefaultTimeoutSeconds,
+                                                            bool saveResult = true)
     {
         var prediction = await PredictUnrecorded(timeoutSeconds);
-        RecordResult(prediction);
+        if (saveResult)
+        {
+            RecordResult(prediction);
+        }
+
         return prediction;
     }
 
@@ -484,16 +491,57 @@ public class NewFaceAuModel : MonoBehaviour
         return calibrator != null && calibrator.Finish();
     }
 
-    // The calibrated emotion for a prediction from `PredictDetailed`, or null when
-    // calibration is off or not ready.
-    public Emotion? CalibratedEmotion(FacePrediction prediction)
+    // ---- Calibration on a fixed clock (advanced) --------------------------------------------
+    //
+    // For callers that take their own predictions on a fixed clock, as a study protocol does,
+    // instead of `CalibrateEmotion`: after `StartCalibration`, call `BeginCalibrationEmotion`
+    // when the prompt appears, then `AddCalibrationSample` once per tick with the tick's
+    // position (0, 1, 2, ...). Position 0 is dropped, and a tick without tracking stays
+    // missing -- it is not retried -- so each emotion needs ticks 1 to 9 tracked. Finish with
+    // `FinishCalibration` as usual.
+
+    public void BeginCalibrationEmotion(Emotion emotion)
+    {
+        if (calibrator == null)
+        {
+            throw new InvalidOperationException("call StartCalibration before BeginCalibrationEmotion");
+        }
+
+        calibrator.BeginEmotion((int)emotion);
+    }
+
+    // True when the sample was kept. `prediction` null means the tick had no face tracking.
+    public bool AddCalibrationSample(int position, FacePrediction? prediction)
+    {
+        if (calibrator == null)
+        {
+            throw new InvalidOperationException("call StartCalibration before AddCalibrationSample");
+        }
+
+        return calibrator.ObserveAt(position, prediction?.Scores, prediction?.Window);
+    }
+
+    // Samples kept so far per emotion, in Emotion order; null when no calibration was started.
+    public int[] CalibrationSampleCounts() => calibrator?.KeptSampleCounts();
+
+    // The full calibrated decision for a prediction -- the emotion's index in Emotion order, and
+    // the similarity sums of the winner and runner-up -- or null when calibration is off or not
+    // ready. `CalibratedEmotion` is the same decision as an Emotion.
+    public NearestCentroid? CalibratedDecision(FacePrediction prediction)
     {
         if (!useCalibration)
         {
             return null;
         }
 
-        var decision = calibrator?.Classify(prediction.Scores, prediction.Window);
+        return calibrator?.Classify(prediction.Scores, prediction.Window);
+    }
+
+    // The calibrated emotion for a prediction from `PredictDetailed`, or null when
+    // calibration is off or not ready.
+    public Emotion? CalibratedEmotion(FacePrediction prediction)
+    {
+        var decision = CalibratedDecision(prediction);
         return decision.HasValue ? (Emotion)decision.Value.ClassIndex : (Emotion?)null;
     }
 

@@ -4,6 +4,7 @@ using Unity.InferenceEngine;
 using Unity.Collections;
 using UnityEngine;
 using System.Collections.Generic;
+using VcuSwimLab.Calibration;
 
 using Debug = UnityEngine.Debug;
 
@@ -165,6 +166,9 @@ public class NewFaceAuModel : MonoBehaviour
         return new FacePrediction((Emotion)maxIndex, scores[maxIndex], scores, window, generation);
     }
 
+    // Uses movement calibration when it is ready (see `CalibrateEmotion`), and the model's own
+    // answer otherwise. The returned confidence is always the model's probability for the
+    // returned emotion.
     public async Awaitable<(Emotion, float)> Predict()
     {
         var prediction = await PredictDetailed();
@@ -175,7 +179,95 @@ public class NewFaceAuModel : MonoBehaviour
             return (Emotion.Neutral, 0f);
         }
 
-        return (prediction.Value.Emotion, prediction.Value.Confidence);
+        var emotion = CalibratedEmotion(prediction.Value) ?? prediction.Value.Emotion;
+        return (emotion, prediction.Value.Scores[(int)emotion]);
+    }
+
+    // ---- Movement calibration (optional) -------------------------------------------------
+    //
+    // Learns how this player makes each emotion, then `Predict` uses it. Without it, nothing
+    // changes. Typical use:
+    //
+    //     predictor.StartCalibration();
+    //     foreach (Emotion e in Enum.GetValues(typeof(Emotion)))
+    //     {
+    //         // show "make a <e> face" first
+    //         await predictor.CalibrateEmotion(e);
+    //     }
+    //     if (!predictor.FinishCalibration()) Debug.LogWarning(predictor.CalibrationError);
+
+    private MovementCalibrator calibrator;
+
+    // True when `Predict` is using movement calibration.
+    public bool IsCalibrated => calibrator != null && calibrator.IsReady;
+
+    // Why calibration failed; empty when it did not, null when it never started.
+    public string CalibrationError => calibrator?.Error;
+
+    // Start a new calibration, forgetting any previous one.
+    public void StartCalibration()
+    {
+        calibrator = new MovementCalibrator(Enum.GetNames(typeof(Emotion)));
+    }
+
+    // Stop using calibration; `Predict` goes back to the model's own answer.
+    public void ClearCalibration()
+    {
+        calibrator = null;
+    }
+
+    // Collect one emotion while the player makes that face. Takes one sample per
+    // `secondsBetweenSamples`; the first is dropped while the face is still changing, so
+    // with the default it lasts about ten seconds. Samples without face tracking are retried.
+    // Returns false when `maxAttempts` samples did not give a complete emotion.
+    public async Awaitable<bool> CalibrateEmotion(Emotion emotion, float secondsBetweenSamples = 1f,
+                                                  int maxAttempts = 20)
+    {
+        if (calibrator == null)
+        {
+            throw new InvalidOperationException("call StartCalibration before CalibrateEmotion");
+        }
+
+        calibrator.BeginEmotion((int)emotion);
+
+        for (int attempt = 0; !calibrator.IsEmotionComplete((int)emotion); ++attempt)
+        {
+            if (attempt >= maxAttempts)
+            {
+                return false;
+            }
+
+            float nextSample = Time.time + secondsBetweenSamples;
+
+            var prediction = await PredictDetailed();
+            if (prediction.HasValue)
+            {
+                calibrator.Observe(prediction.Value.Scores, prediction.Value.Window);
+            }
+
+            float remaining = nextSample - Time.time;
+            if (remaining > 0)
+            {
+                await Awaitable.WaitForSecondsAsync(remaining);
+            }
+        }
+
+        return true;
+    }
+
+    // Build the calibration once every emotion is collected. Returns false, with
+    // `CalibrationError` set, if it could not be built; `Predict` then stays uncalibrated.
+    public bool FinishCalibration()
+    {
+        return calibrator != null && calibrator.Finish();
+    }
+
+    // The calibrated emotion for a prediction from `PredictDetailed`, or null when
+    // calibration is not ready.
+    public Emotion? CalibratedEmotion(FacePrediction prediction)
+    {
+        var decision = calibrator?.Classify(prediction.Scores, prediction.Window);
+        return decision.HasValue ? (Emotion)decision.Value.ClassIndex : (Emotion?)null;
     }
 
 

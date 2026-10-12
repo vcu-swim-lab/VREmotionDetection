@@ -3,6 +3,7 @@
     "rootNamespace": "",
     "references": [
         "VREmotionDetection",
+        "VcuSwimLab.Calibration",
         "GUID:63a57c8b658089e49a173b0f0c4870a7"
     ],
     "includePlatforms": [

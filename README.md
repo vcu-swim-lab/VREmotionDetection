@@ -78,6 +78,9 @@ People make the same emotion with different faces. Movement calibration learns h
 player makes each emotion, then matches every prediction against the player's own faces.
 It is **off by default**: without it, `Predict` returns the model's own answer.
 
+**Turn it on** by ticking **Use Calibration** on the **New Face Au Model** component (or
+`predictor.UseCalibration = true` in code). Then run the calibration:
+
 ```csharp
 predictor.StartCalibration();
 foreach (Emotion emotion in Enum.GetValues(typeof(Emotion)))
@@ -95,6 +98,7 @@ var (emotion, confidence) = await predictor.Predict();   // now calibrated
 
 | Method | What it does |
 |---|---|
+| `UseCalibration` | The **Use Calibration** checkbox. Off: the methods below do nothing and `Predict` uses the model's own answer |
 | `StartCalibration()` | Start a new calibration |
 | `CalibrateEmotion(emotion)` | Collect one emotion: 10 samples, one per second; the first is dropped while the face is still changing. Samples without tracking are retried |
 | `FinishCalibration()` | Build it. `false` when an emotion is missing; `CalibrationError` says why |

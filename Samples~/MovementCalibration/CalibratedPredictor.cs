@@ -4,15 +4,13 @@ using UnityEngine;
 // Movement calibration: the player makes each of the seven faces once (about 10 seconds
 // each), then every prediction is matched against this player's own faces. The calibration
 // is saved on this device for the player, so next time it can be loaded instead of redone.
-// Without calibration, `Predict` works exactly as before.
+// Tick "Use Calibration" on the New Face Au Model component to turn it on; unticked (the
+// default), this script just predicts with the model's own answer.
 [RequireComponent(typeof(NewFaceAuModel))]
 public class CalibratedPredictor : MonoBehaviour
 {
     // Any id your game uses for the player: letters, digits, '-' and '_'.
     [SerializeField] private string playerId = "player1";
-
-    // Off: skip calibration and use the model's own answer.
-    [SerializeField] private bool useCalibration = true;
 
     private NewFaceAuModel predictor;
 
@@ -24,7 +22,7 @@ public class CalibratedPredictor : MonoBehaviour
 
     private async Awaitable Run()
     {
-        if (useCalibration && !predictor.LoadCalibration(playerId))
+        if (predictor.UseCalibration && !predictor.LoadCalibration(playerId))
         {
             await Calibrate();
         }

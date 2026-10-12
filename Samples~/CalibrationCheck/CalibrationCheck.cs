@@ -34,6 +34,9 @@ public class CalibrationCheck : MonoBehaviour
     {
         var emotions = (Emotion[])Enum.GetValues(typeof(Emotion));
 
+        // This check is about calibration, so it switches it on whatever the checkbox says.
+        predictor.UseCalibration = true;
+
         // Part 1: calibrate.
         predictor.StartCalibration();
         foreach (var emotion in emotions)

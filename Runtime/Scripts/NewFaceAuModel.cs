@@ -76,6 +76,13 @@ public class NewFaceAuModel : MonoBehaviour
     [SerializeField]
     private ModelAsset faceModel;
 
+    [Tooltip("Adapt the predictions to each player with movement calibration. Off by default: " +
+             "the model's own answer is used and the calibration methods do nothing. When on, " +
+             "the game runs the calibration (CalibrateEmotion for each emotion, or " +
+             "LoadCalibration for a saved one) and Predict uses it.")]
+    [SerializeField]
+    private bool useCalibration = false;
+
     [Tooltip("Save every prediction of the session to a CSV file on the device. Copy the files " +
              "to your PC with the Unity menu VR Emotion > Get Results From Headset.")]
     [SerializeField]
@@ -239,16 +246,36 @@ public class NewFaceAuModel : MonoBehaviour
     private MovementCalibrator calibrator;
     private string loadError;
 
+    private const string CalibrationOffMessage =
+        "calibration is off: tick \"Use Calibration\" on the predictor, or set UseCalibration = true";
+
+    // The "Use Calibration" checkbox. Off (the default): the model's own answer is used and the
+    // calibration methods do nothing. Games read it to decide whether to run a calibration step.
+    public bool UseCalibration
+    {
+        get => useCalibration;
+        set => useCalibration = value;
+    }
+
     // True when `Predict` is using movement calibration.
-    public bool IsCalibrated => calibrator != null && calibrator.IsReady;
+    public bool IsCalibrated => useCalibration && calibrator != null && calibrator.IsReady;
 
     // Why calibration or loading failed; empty or null when nothing failed.
     public string CalibrationError => loadError ?? calibrator?.Error;
 
-    // Start a new calibration, forgetting any previous one.
+    // Start a new calibration, forgetting any previous one. Does nothing when calibration is off.
     public void StartCalibration()
     {
+        calibrator = null;
         loadError = null;
+
+        if (!useCalibration)
+        {
+            loadError = CalibrationOffMessage;
+            Debug.LogWarning($"{nameof(NewFaceAuModel)}: {CalibrationOffMessage}");
+            return;
+        }
+
         calibrator = new MovementCalibrator(Enum.GetNames(typeof(Emotion)));
     }
 
@@ -328,6 +355,12 @@ public class NewFaceAuModel : MonoBehaviour
         calibrator = null;
         loadError = null;
 
+        if (!useCalibration)
+        {
+            loadError = CalibrationOffMessage;
+            return false;
+        }
+
         string path = CalibrationPath(userId);
         if (!System.IO.File.Exists(path))
         {
@@ -402,10 +435,16 @@ public class NewFaceAuModel : MonoBehaviour
     // Collect one emotion while the player makes that face. Takes one sample per
     // `secondsBetweenSamples`; the first is dropped while the face is still changing, so
     // with the default it lasts about ten seconds. Samples without face tracking are retried.
-    // Returns false when `maxAttempts` samples did not give a complete emotion.
+    // Returns false when `maxAttempts` samples did not give a complete emotion, and at once
+    // when calibration is off.
     public async Awaitable<bool> CalibrateEmotion(Emotion emotion, float secondsBetweenSamples = 1f,
                                                   int maxAttempts = 20)
     {
+        if (!useCalibration)
+        {
+            return false;
+        }
+
         if (calibrator == null)
         {
             throw new InvalidOperationException("call StartCalibration before CalibrateEmotion");
@@ -446,9 +485,14 @@ public class NewFaceAuModel : MonoBehaviour
     }
 
     // The calibrated emotion for a prediction from `PredictDetailed`, or null when
-    // calibration is not ready.
+    // calibration is off or not ready.
     public Emotion? CalibratedEmotion(FacePrediction prediction)
     {
+        if (!useCalibration)
+        {
+            return null;
+        }
+
         var decision = calibrator?.Classify(prediction.Scores, prediction.Window);
         return decision.HasValue ? (Emotion)decision.Value.ClassIndex : (Emotion?)null;
     }

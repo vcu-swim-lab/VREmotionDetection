@@ -122,6 +122,29 @@ public class MovementCalibratorTests
     }
 
     [Test]
+    public void ObserveAt_drops_position_0_and_a_missed_position_stays_missed()
+    {
+        var calibrator = new MovementCalibrator(Names);
+        for (int cls = 0; cls < Classes; ++cls)
+        {
+            calibrator.BeginEmotion(cls);
+            Assert.IsFalse(calibrator.ObserveAt(0, Scores(cls), Window(cls)), "position 0 is dropped");
+            for (int i = 1; i <= 9; ++i)
+            {
+                // Anger loses position 5 to a tracking dropout; the clock does not wait for it.
+                bool missed = cls == 0 && i == 5;
+                Assert.AreEqual(!missed, calibrator.ObserveAt(i, missed ? null : Scores(cls), Window(cls)));
+            }
+
+            Assert.IsTrue(calibrator.IsEmotionComplete(cls));
+        }
+
+        CollectionAssert.AreEqual(new[] { 8, 9, 9, 9, 9, 9, 9 }, calibrator.KeptSampleCounts());
+        Assert.IsFalse(calibrator.Finish(), "a class with 8 of 9 samples must fail");
+        StringAssert.Contains("Anger 8/9", calibrator.Error);
+    }
+
+    [Test]
     public void Observe_before_BeginEmotion_is_refused()
     {
         var calibrator = new MovementCalibrator(Names);

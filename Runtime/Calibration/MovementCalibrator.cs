@@ -24,6 +24,12 @@ namespace VcuSwimLab.Calibration
     /// </remarks>
     public sealed class MovementCalibrator
     {
+        /// <summary>
+        /// Bumped when anything that changes a calibrated decision changes. Session logs record
+        /// it so a pooled analysis can refuse to mix implementations.
+        /// </summary>
+        public const string ImplementationVersion = "runtime-calibration-v1";
+
         /// <summary>Samples kept per emotion.</summary>
         public const int SamplesPerEmotion = PersonalCentroidBuilder.RequiredTicksPerCentroid;
 
@@ -132,6 +138,40 @@ namespace VcuSwimLab.Calibration
             taken[current]++;
             return true;
         }
+
+        /// <summary>
+        /// Offer the sample taken at a fixed position since `BeginEmotion`: 0 for the first,
+        /// which is dropped, then 1..9. For callers that sample on a clock and want a missed
+        /// sample to stay missed, as the study protocol and its offline analysis do. Offer each
+        /// position at most once.
+        /// </summary>
+        /// <returns>True when the sample was kept.</returns>
+        public bool ObserveAt(int sampleIndex, IReadOnlyList<float> scores, IReadOnlyList<float[]> window)
+        {
+            if (current < 0)
+            {
+                throw new InvalidOperationException("call BeginEmotion before ObserveAt");
+            }
+
+            if (sampleIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sampleIndex), sampleIndex, "must be 0 or more");
+            }
+
+            taken[current] = Math.Max(taken[current], Math.Min(sampleIndex + 1, SamplesToCollectPerEmotion));
+
+            if (scores == null || window == null)
+            {
+                return false;
+            }
+
+            bool keptScores = scoreBuilder.Observe(current, sampleIndex, scores);
+            bool keptMovement = movementBuilder.Observe(current, sampleIndex, window);
+            return keptScores && keptMovement;
+        }
+
+        /// <summary>Samples kept so far per class (the dropped first one not included).</summary>
+        public int[] KeptSampleCounts() => scoreBuilder.TickCounts();
 
         /// <summary>
         /// Build the calibration from the collected samples.

@@ -115,6 +115,37 @@ change, `LoadCalibration` refuses it and the player calibrates again.
 A full example is in [`Samples~/MovementCalibration`](./Samples~/MovementCalibration/CalibratedPredictor.cs).
 
 
+## 📊 Results
+
+With **Save Results** ticked on the predictor (the default), every prediction of a session is
+saved on the headset in one CSV file, one row per prediction:
+
+| time_utc | seconds | emotion | confidence | calibrated | model_emotion |
+|---|---|---|---|---|---|
+| 2026-10-12T14:03:05.120Z | 12.004 | Happiness | 0.8123 | yes | Surprise |
+
+`emotion` is what your game received; `model_emotion` is the model's own answer (they differ
+only when calibration changed it). Calibration samples and raw face-tracking values are not
+saved.
+
+**Show the player a summary** at the end of a session:
+
+```csharp
+resultsText.text = predictor.GetResultsSummary();
+// 120 predictions over 2.1 min
+// Happiness: 40% (average confidence 0.81)
+// Neutral: 30% (average confidence 0.66) ...
+```
+
+**Get the files on your PC:** connect the headset with a USB cable, then in Unity choose
+**VR Emotion > Get Results From Headset**. The files are copied to a `HeadsetResults` folder
+in your project, which opens. Open them in Excel or Google Sheets. The folder comes with its
+own `.gitignore`, so the results are never committed.
+
+The files describe real people. `NewFaceAuModel.DeleteSavedResults()` deletes them from the
+headset.
+
+
 ## 📝 License
 
 This project is licensed under the [MIT License](./LICENSE).

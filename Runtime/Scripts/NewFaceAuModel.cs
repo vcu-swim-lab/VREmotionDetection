@@ -76,6 +76,11 @@ public class NewFaceAuModel : MonoBehaviour
     [SerializeField]
     private ModelAsset faceModel;
 
+    [Tooltip("Save every prediction of the session to a CSV file on the device. Copy the files " +
+             "to your PC with the Unity menu VR Emotion > Get Results From Headset.")]
+    [SerializeField]
+    private bool saveResults = true;
+
 #if UNITY_EDITOR
     // Unity calls this when the component is added, so the default model is assigned
     // without searching for it.
@@ -167,6 +172,14 @@ public class NewFaceAuModel : MonoBehaviour
     // Full prediction result, including the exact input window. Returns null when a
     // window of valid frames could not be collected before the timeout.
     public async Awaitable<FacePrediction?> PredictDetailed(float timeoutSeconds = DefaultTimeoutSeconds)
+    {
+        var prediction = await PredictUnrecorded(timeoutSeconds);
+        RecordResult(prediction);
+        return prediction;
+    }
+
+    // A prediction that is not saved to the results file; calibration samples use it.
+    private async Awaitable<FacePrediction?> PredictUnrecorded(float timeoutSeconds)
     {
         var window = await AwaitWindow(timeoutSeconds);
         if (window == null)
@@ -409,7 +422,7 @@ public class NewFaceAuModel : MonoBehaviour
 
             float nextSample = Time.time + secondsBetweenSamples;
 
-            var prediction = await PredictDetailed();
+            var prediction = await PredictUnrecorded(DefaultTimeoutSeconds);
             if (prediction.HasValue)
             {
                 calibrator.Observe(prediction.Value.Scores, prediction.Value.Window);
@@ -441,8 +454,64 @@ public class NewFaceAuModel : MonoBehaviour
     }
 
 
+    // ---- Results ---------------------------------------------------------------------------
+    //
+    // With `saveResults` on (the default), every prediction is saved to one CSV file per
+    // session on the device: time, emotion, confidence, calibrated or not, and the model's own
+    // emotion. Calibration samples are not saved. Raw face-tracking values are never saved.
+
+    private readonly ResultsRecorder results = new();
+
+    // A short text summary of this session, e.g. to show the player at the end.
+    public string GetResultsSummary() => results.Summary();
+
+    // This session's results file, or null before the first saved prediction.
+    public string ResultsFilePath => results.FilePath;
+
+    // Where all sessions' results files are saved on this device.
+    public static string ResultsFolder => ResultsRecorder.Folder;
+
+    // Delete every saved results file on this device, e.g. when a player asks for it.
+    public static void DeleteSavedResults()
+    {
+        if (System.IO.Directory.Exists(ResultsFolder))
+        {
+            System.IO.Directory.Delete(ResultsFolder, recursive: true);
+        }
+    }
+
+    private void RecordResult(FacePrediction? prediction)
+    {
+        if (!saveResults)
+        {
+            return;
+        }
+
+        if (prediction == null)
+        {
+            results.RecordNoTracking();
+            return;
+        }
+
+        var value = prediction.Value;
+        var calibrated = CalibratedEmotion(value);
+        var emotion = calibrated ?? value.Emotion;
+        results.Record(emotion, value.Scores[(int)emotion], calibrated.HasValue, value.Emotion);
+    }
+
+    // The Quest pauses rather than quits when the headset is taken off; close the file so
+    // nothing is lost. The next prediction appends to the same file.
+    void OnApplicationPause(bool paused)
+    {
+        if (paused)
+        {
+            results.Dispose();
+        }
+    }
+
     void OnDisable()
     {
         faceWorker.Dispose();
+        results.Dispose();
     }
 }

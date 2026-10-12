@@ -103,5 +103,5 @@ InitTestScene*.unity*
 /tmp.meta
 
 # Experimental models kept on the researchers' machines; only the deployed model ships.
-/Runtime/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx
-/Runtime/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx.meta
+/Archive~/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx
+/Archive~/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx.meta

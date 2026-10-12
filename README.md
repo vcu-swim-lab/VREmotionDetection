@@ -35,7 +35,7 @@ Neutral, Sadness and Surprise. An optional calibration adapts it to each player.
    If it is empty, pick that file from `Runtime/Models`.
 
 `FaceAuModel`, the original predictor that combined a natural-data and an acted-data model, is
-obsolete. Use `NewFaceAuModel`.
+obsolete. Use `NewFaceAuModel`. Models the library no longer uses are kept in `Archive~/`.
 
 
 ## 🧠 Model input and output

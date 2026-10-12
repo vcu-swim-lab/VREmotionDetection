@@ -4,10 +4,10 @@ using UnityEditor;
 
 // Pins the per-model softmax decision made in `Utils.PrepareModel`.
 //
-// The face graphs already end in Softmax, so appending another squashes the output and
-// leaves the reported confidence meaningless. `sound_model.onnx` ends in Gemm and emits
-// raw logits, so it genuinely needs one. A single global choice cannot be right for both,
-// and getting it wrong is silent -- argmax is unaffected either way. Hence these tests.
+// The face graph already ends in Softmax, so appending another squashes the output and
+// leaves the reported confidence meaningless. Getting it wrong is silent -- argmax is
+// unaffected -- hence this test. (The voice model, which needed the softmax, is archived in
+// Archive~/Models along with its tests' subject.)
 public class ModelPreparationTests
 {
     private const string ModelDir = "Packages/com.vcu-swim-lab.vr-emotion-detection/Runtime/Models/";
@@ -55,33 +55,5 @@ public class ModelPreparationTests
 
         Assert.That(scores.Length, Is.EqualTo(7), "The teacher should emit one score per class.");
         AssertIsProbabilityDistribution(scores, "teacher without appended softmax");
-    }
-
-    [Test]
-    public void SoundModel_EmitsLogits_SoItNeedsTheAppendedSoftmax()
-    {
-        var asset = LoadAsset("sound_model.onnx");
-
-        var raw = RunOnZeros(Utils.PrepareModel(asset, appendSoftmax: false), new TensorShape(1, 80, 3000));
-
-        float sum = 0f;
-        foreach (var v in raw)
-        {
-            sum += v;
-        }
-
-        Assert.That(sum, Is.Not.EqualTo(1f).Within(1e-3f),
-            "sound_model.onnx is expected to emit raw logits, not a distribution.");
-    }
-
-    [Test]
-    public void SoundModel_WithAppendedSoftmax_OutputsProbabilities()
-    {
-        var asset = LoadAsset("sound_model.onnx");
-
-        var model = Utils.PrepareModel(asset, appendSoftmax: true);
-        var scores = RunOnZeros(model, new TensorShape(1, 80, 3000));
-
-        AssertIsProbabilityDistribution(scores, "sound model with appended softmax");
     }
 }

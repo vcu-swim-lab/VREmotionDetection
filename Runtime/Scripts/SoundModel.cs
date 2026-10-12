@@ -6,6 +6,8 @@ using System.Collections.Generic;
 
 using Debug = UnityEngine.Debug;
 
+// Experimental voice predictor, unfinished and unused. Its two models are archived in
+// `Archive~/Models`; move them back to `Runtime/Models` to work on it again.
 // [RequireComponent(typeof(DeviceManager))]
 public class SoundModel : MonoBehaviour
 {

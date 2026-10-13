@@ -6,6 +6,8 @@ using System.Collections.Generic;
 
 using Debug = UnityEngine.Debug;
 
+// Experimental voice predictor, unfinished and unused. Its two models are archived in
+// `Archive~/Models`; move them back to `Runtime/Models` to work on it again.
 // [RequireComponent(typeof(DeviceManager))]
 public class SoundModel : MonoBehaviour
 {
@@ -29,7 +31,9 @@ public class SoundModel : MonoBehaviour
         logmelVoiceModelObject = ModelLoader.Load(logmelVoiceModel);
         logmelVoiceWorker = new Worker(logmelVoiceModelObject, BackendType.GPUCompute);
 
-        voiceModelObject = Utils.PrepareModel(voiceModel);
+        // `sound_model.onnx` ends in Gemm and emits raw logits (they sum to ~0.39 and can
+        // be negative), so unlike the face models it genuinely needs a softmax appended.
+        voiceModelObject = Utils.PrepareModel(voiceModel, appendSoftmax: true);
         voiceWorker = new Worker(voiceModelObject, BackendType.GPUCompute);
 
         Debug.Log("SoundModel initialized.");

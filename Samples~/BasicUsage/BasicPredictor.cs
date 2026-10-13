@@ -1,52 +1,35 @@
-
 using UnityEngine;
 
-[RequireComponent(typeof(FaceAuModel))]
-public class MyScript : MonoBehaviour
+// Emotion predictions without calibration. Put this on the GameObject that has the
+// NewFaceAuModel component.
+[RequireComponent(typeof(NewFaceAuModel))]
+public class BasicPredictor : MonoBehaviour
 {
-    private FaceAuModel auModel;
+    private NewFaceAuModel predictor;
 
     void Start()
     {
-        // ...
-        auModel = GetComponent<FaceAuModel>();
-
-        // Start the prediction task, use the predictor from there
-        PredictTask();
+        predictor = GetComponent<NewFaceAuModel>();
+        _ = PredictLoop();
     }
 
-    void Update()
-    {
-    }
-
-    private async Awaitable PredictTask()
+    private async Awaitable PredictLoop()
     {
         while (true)
         {
-            // Get a prediction
-            // Confidence tells you how certain the model is about this emotion. You can ignore it most of the time.
-            var (emo, confidence) = await predictor.Predict();
+            // The most likely emotion and its probability (0 to 1).
+            var (emotion, confidence) = await predictor.Predict();
+            Debug.Log($"{emotion} ({confidence:F2})");
 
-            // Or, you can get a list of all confidences and process them yourself.
-            // NOTE: when calling `Predict` the model internally multiplies the confidences by some values,
-            // so using confidences (`PredictRaw`) is recommended when you have only natural or only acted data and the results
-            // will be slightly different from `Predict`.
-            var (nat, act) = await predictor.PredictRaw();
-            var natArr = nat.AsReadOnlyNativeArray(); // float[7] 0.0-1.0
-            var actArr = act.AsReadOnlyNativeArray(); // float[7] 0.0-1.0
-            // ... use the confidences here
-
-            // use the emotion here, possible values are:
-            // - Emotion.Anger
-            // - Emotion.Disgust
-            // - Emotion.Fear
-            // - Emotion.Happiness
-            // - Emotion.Neutral
-            // - Emotion.Sadness
-            // - Emotion.Surprise
-
-            Debug.Log($"Got emotion {emo}");
+            // Or every detail: all seven probabilities, in Emotion order
+            // (Anger, Disgust, Fear, Happiness, Neutral, Sadness, Surprise).
+            // Null when face tracking gave no valid frames in time.
+            var detailed = await predictor.PredictDetailed();
+            if (detailed.HasValue)
+            {
+                float[] scores = detailed.Value.Scores;
+                Debug.Log($"Happiness probability: {scores[(int)Emotion.Happiness]:F2}");
+            }
         }
     }
 }
-

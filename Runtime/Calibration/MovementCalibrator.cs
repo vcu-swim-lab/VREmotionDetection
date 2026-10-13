@@ -1,0 +1,314 @@
+using System;
+using System.Collections.Generic;
+
+namespace VcuSwimLab.Calibration
+{
+    /// <summary>
+    /// Movement calibration for one player: learn how this player makes each emotion, then
+    /// classify every later prediction against it.
+    /// </summary>
+    /// <remarks>
+    /// The same method the game's protocol runs in its `movement` mode (`RuntimeCalibrator`),
+    /// built from the same builders and the same decision, `CalibrationMath.NearestOfSum`:
+    /// per emotion, the cosine of the model's log-scores to the player's own score centroid,
+    /// plus the cosine of the face movements to the player's own movement centroid. The
+    /// highest sum wins.
+    ///
+    /// Per emotion it keeps nine samples. The first sample after `BeginEmotion` is dropped,
+    /// as tick 0 is in the protocol: it is taken while the player is still changing face. So
+    /// a complete emotion takes ten samples, and the protocol takes one per second.
+    ///
+    /// A missing sample (no tracking) is not counted, so the caller can simply try again.
+    /// Calibration either completes for every emotion or reports why not; it never runs on a
+    /// partial set.
+    /// </remarks>
+    public sealed class MovementCalibrator
+    {
+        /// <summary>
+        /// Bumped when anything that changes a calibrated decision changes. Session logs record
+        /// it so a pooled analysis can refuse to mix implementations.
+        /// </summary>
+        public const string ImplementationVersion = "runtime-calibration-v1";
+
+        /// <summary>Samples kept per emotion.</summary>
+        public const int SamplesPerEmotion = PersonalCentroidBuilder.RequiredTicksPerCentroid;
+
+        /// <summary>Samples taken per emotion, including the dropped first one.</summary>
+        public const int SamplesToCollectPerEmotion = PersonalCentroidBuilder.LastScoredTick + 1;
+
+        private readonly string[] classNames;
+        private PersonalCentroidBuilder scoreBuilder;
+        private MovementCentroidBuilder movementBuilder;
+        private int[] taken;
+        private int current;
+
+        private double[][] scoreCentroids;
+        private double[][] movementCentroids;
+
+        /// <summary>True once `Finish` built a complete calibration.</summary>
+        public bool IsReady { get; private set; }
+
+        /// <summary>Why the last `Finish` failed; empty when it did not.</summary>
+        public string Error { get; private set; } = string.Empty;
+
+        public IReadOnlyList<string> ClassNames => classNames;
+
+        /// <param name="classNames">The model's classes, in output order.</param>
+        public MovementCalibrator(IReadOnlyList<string> classNames)
+        {
+            if (classNames == null) throw new ArgumentNullException(nameof(classNames));
+            if (classNames.Count < 2)
+            {
+                throw new ArgumentException("calibration needs at least two classes", nameof(classNames));
+            }
+
+            this.classNames = new string[classNames.Count];
+            for (int i = 0; i < classNames.Count; ++i) this.classNames[i] = classNames[i];
+
+            Reset();
+        }
+
+        /// <summary>Forget everything and start a new calibration.</summary>
+        public void Reset()
+        {
+            scoreBuilder = new PersonalCentroidBuilder(classNames.Length);
+            movementBuilder = new MovementCentroidBuilder(classNames.Length);
+            taken = new int[classNames.Length];
+            current = -1;
+            scoreCentroids = null;
+            movementCentroids = null;
+            IsReady = false;
+            Error = string.Empty;
+        }
+
+        /// <summary>
+        /// Start collecting one emotion. Call it when the player is asked to make that face.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">
+        /// The emotion already has samples, or calibration is finished. Call `Reset` to redo it.
+        /// </exception>
+        public void BeginEmotion(int classIndex)
+        {
+            CheckClass(classIndex);
+
+            if (IsReady)
+            {
+                throw new InvalidOperationException("calibration is finished; call Reset to start again");
+            }
+
+            if (taken[classIndex] > 0)
+            {
+                throw new InvalidOperationException(
+                    $"{classNames[classIndex]} was already collected; call Reset to start again");
+            }
+
+            current = classIndex;
+        }
+
+        /// <summary>True when the emotion has all its samples.</summary>
+        public bool IsEmotionComplete(int classIndex)
+        {
+            CheckClass(classIndex);
+            return taken[classIndex] >= SamplesToCollectPerEmotion;
+        }
+
+        /// <summary>
+        /// Offer one sample of the current emotion: the model's scores and the window they were
+        /// computed from.
+        /// </summary>
+        /// <returns>
+        /// True when the sample was counted. False when it was missing (call again), or when the
+        /// emotion is already complete.
+        /// </returns>
+        public bool Observe(IReadOnlyList<float> scores, IReadOnlyList<float[]> window)
+        {
+            if (current < 0)
+            {
+                throw new InvalidOperationException("call BeginEmotion before Observe");
+            }
+
+            if (scores == null || window == null || IsEmotionComplete(current))
+            {
+                return false;
+            }
+
+            int sample = taken[current];
+            scoreBuilder.Observe(current, sample, scores);
+            movementBuilder.Observe(current, sample, window);
+            taken[current]++;
+            return true;
+        }
+
+        /// <summary>
+        /// Offer the sample taken at a fixed position since `BeginEmotion`: 0 for the first,
+        /// which is dropped, then 1..9. For callers that sample on a clock and want a missed
+        /// sample to stay missed, as the study protocol and its offline analysis do. Offer each
+        /// position at most once.
+        /// </summary>
+        /// <returns>True when the sample was kept.</returns>
+        public bool ObserveAt(int sampleIndex, IReadOnlyList<float> scores, IReadOnlyList<float[]> window)
+        {
+            if (current < 0)
+            {
+                throw new InvalidOperationException("call BeginEmotion before ObserveAt");
+            }
+
+            if (sampleIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(sampleIndex), sampleIndex, "must be 0 or more");
+            }
+
+            taken[current] = Math.Max(taken[current], Math.Min(sampleIndex + 1, SamplesToCollectPerEmotion));
+
+            if (scores == null || window == null)
+            {
+                return false;
+            }
+
+            bool keptScores = scoreBuilder.Observe(current, sampleIndex, scores);
+            bool keptMovement = movementBuilder.Observe(current, sampleIndex, window);
+            return keptScores && keptMovement;
+        }
+
+        /// <summary>Samples kept so far per class (the dropped first one not included).</summary>
+        public int[] KeptSampleCounts() => scoreBuilder.TickCounts();
+
+        /// <summary>
+        /// Build the calibration from the collected samples.
+        /// </summary>
+        /// <returns>False, with `Error` set, when any emotion is incomplete or a sample was bad.</returns>
+        public bool Finish()
+        {
+            IsReady = false;
+
+            if (!scoreBuilder.TryBuild(classNames, out var scores, out string error)
+                || !movementBuilder.TryBuild(classNames, out var movements, out error))
+            {
+                Error = error;
+                return false;
+            }
+
+            scoreCentroids = scores;
+            movementCentroids = movements;
+            Error = string.Empty;
+            IsReady = true;
+            return true;
+        }
+
+        /// <summary>
+        /// The calibrated decision for one prediction, or null when calibration is not ready or
+        /// the prediction cannot be scored (missing or malformed scores or window).
+        /// </summary>
+        public NearestCentroid? Classify(IReadOnlyList<float> scores, IReadOnlyList<float[]> window)
+        {
+            if (!IsReady || scores == null || window == null || scores.Count != classNames.Length)
+            {
+                return null;
+            }
+
+            try
+            {
+                return CalibrationMath.NearestOfSum(
+                    scoreCentroids, CalibrationMath.LogScore(scores),
+                    movementCentroids, CalibrationMath.MovementFeature(window));
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// The finished calibration as plain arrays, for saving per user. Null when not ready.
+        /// </summary>
+        /// <remarks>
+        /// These vectors describe one person's face. Keep them on the user's device and never
+        /// in the model asset or a repository.
+        /// </remarks>
+        public CalibrationProfile ExportProfile()
+        {
+            if (!IsReady) return null;
+
+            return new CalibrationProfile(ImplementationVersion, classNames, Copy(scoreCentroids),
+                                          Copy(movementCentroids));
+        }
+
+        /// <summary>
+        /// A ready calibrator from a saved profile, or null with `error` set when the profile
+        /// is from another implementation, has other classes, or is malformed.
+        /// </summary>
+        public static MovementCalibrator FromProfile(CalibrationProfile profile,
+                                                     IReadOnlyList<string> classNames, out string error)
+        {
+            error = null;
+            if (profile == null) { error = "no profile"; return null; }
+
+            if (profile.ImplementationVersion != ImplementationVersion)
+            {
+                error = $"the profile was made by {profile.ImplementationVersion}, this is {ImplementationVersion}";
+                return null;
+            }
+
+            if (profile.ClassNames == null || profile.ClassNames.Length != classNames.Count)
+            {
+                error = "the profile has a different number of classes";
+                return null;
+            }
+
+            for (int c = 0; c < classNames.Count; ++c)
+            {
+                if (profile.ClassNames[c] != classNames[c])
+                {
+                    error = $"class {c} is '{profile.ClassNames[c]}' in the profile but '{classNames[c]}' here";
+                    return null;
+                }
+            }
+
+            if (!Valid(profile.ScoreCentroids, classNames.Count, classNames.Count)
+                || !Valid(profile.MovementCentroids, classNames.Count, CalibrationMath.FaceActionUnitCount))
+            {
+                error = "the profile's centroids have the wrong shape or are not finite";
+                return null;
+            }
+
+            var calibrator = new MovementCalibrator(classNames)
+            {
+                scoreCentroids = Copy(profile.ScoreCentroids),
+                movementCentroids = Copy(profile.MovementCentroids),
+                IsReady = true,
+            };
+            return calibrator;
+        }
+
+        private static bool Valid(double[][] matrix, int rows, int width)
+        {
+            if (matrix == null || matrix.Length != rows) return false;
+            foreach (var row in matrix)
+            {
+                if (row == null || row.Length != width) return false;
+                foreach (double v in row)
+                {
+                    if (double.IsNaN(v) || double.IsInfinity(v)) return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static double[][] Copy(double[][] source)
+        {
+            var copy = new double[source.Length][];
+            for (int i = 0; i < source.Length; ++i) copy[i] = (double[])source[i].Clone();
+            return copy;
+        }
+
+        private void CheckClass(int classIndex)
+        {
+            if (classIndex < 0 || classIndex >= classNames.Length)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(classIndex), classIndex, $"outside 0..{classNames.Length - 1}");
+            }
+        }
+    }
+}

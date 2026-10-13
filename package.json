@@ -1,6 +1,6 @@
 {
   "name": "com.vcu-swim-lab.vr-emotion-detection",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "displayName": "VR Emotion Detector",
   "description": "A package that helps with emotion detection in VR",
   "unity": "2024.0",
@@ -19,6 +19,16 @@
       "displayName": "Basic Usage",
       "description": "Contains a basic setup for using the emotion predictor",
       "path": "Samples~/BasicUsage"
+    },
+    {
+      "displayName": "Movement Calibration",
+      "description": "Calibrates the predictor to one player's faces, then predicts with it",
+      "path": "Samples~/MovementCalibration"
+    },
+    {
+      "displayName": "Calibration Check",
+      "description": "On the headset: calibrate, then compare uncalibrated and calibrated predictions on the same face data",
+      "path": "Samples~/CalibrationCheck"
     }
   ]
 }

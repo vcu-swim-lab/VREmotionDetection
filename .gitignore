@@ -97,3 +97,11 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Local scratch scripts
+/tmp/
+/tmp.meta
+
+# Experimental models kept on the researchers' machines; only the deployed model ships.
+/Archive~/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx
+/Archive~/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx.meta

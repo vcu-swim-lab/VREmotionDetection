@@ -6,6 +6,10 @@ using System.Collections.Generic;
 
 using Debug = UnityEngine.Debug;
 
+// The original predictor, combining a natural-data and an acted-data model. Kept so existing
+// scenes still load; new projects use `NewFaceAuModel`, which runs the acted-data model.
+// Its two models are archived in `Archive~/Models`.
+[System.Obsolete("Use NewFaceAuModel, which runs the acted-data model and supports calibration.")]
 [RequireComponent(typeof(OVRFaceExpressions))]
 [RequireComponent(typeof(DeviceManager))]
 public class FaceAuModel : MonoBehaviour
@@ -28,10 +32,13 @@ public class FaceAuModel : MonoBehaviour
         Debug.Assert(naturalModel != null, $"Natural model not assigned in ${GetType().Name}");
         Debug.Assert(actedModel != null, $"Acted model not assigned in ${GetType().Name}");
 
-        naturalModelObject = Utils.PrepareModel(naturalModel);
+        // `natural_trial_96.onnx` and `act_trial_92.onnx` both already end in a Softmax
+        // node and output probabilities; appending another would corrupt the weighted
+        // blend in `Predict` below, which assumes both inputs are on a probability scale.
+        naturalModelObject = Utils.PrepareModel(naturalModel, appendSoftmax: false);
         naturalWorker = new Worker(naturalModelObject, BackendType.GPUCompute);
 
-        actedModelObject = Utils.PrepareModel(actedModel);
+        actedModelObject = Utils.PrepareModel(actedModel, appendSoftmax: false);
         actedWorker = new Worker(actedModelObject, BackendType.GPUCompute);
 
         var deviceManager = GetComponent<DeviceManager>();

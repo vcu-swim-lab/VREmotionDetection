@@ -147,13 +147,43 @@ resultsText.text = predictor.GetResultsSummary();
 // Neutral: 30% (average confidence 0.66) ...
 ```
 
-**Get the files on your PC:** connect the headset with a USB cable, then in Unity choose
-**VR Emotion > Get Results From Headset**. The files are copied to a `HeadsetResults` folder
-in your project, which opens. Open them in Excel or Google Sheets. The folder comes with its
-own `.gitignore`, so the results are never committed.
+### Where the files are
 
-The files describe real people. `NewFaceAuModel.DeleteSavedResults()` deletes them from the
-headset.
+| | Location |
+|---|---|
+| On the headset | `/sdcard/Android/data/<your app's package name>/files/VREmotionDetection/results/` |
+| In the Unity Editor (Play mode) | `Application.persistentDataPath/VREmotionDetection/results/` (on Windows: `C:\Users\<you>\AppData\LocalLow\<Company>\<Product>\...`) |
+| On your PC, after copying | `<your project folder>/HeadsetResults/`, next to `Assets` |
+
+- **One file per run of the app**, named by when it started: `session_<date>_<time>.csv`. The time
+  is **UTC**, not local time. Several rounds played without closing the app go into the same file.
+- **The file does not say who played.** If several people use the headset, write down which
+  session time belongs to whom.
+
+### Copy the files to your PC
+
+1. Run at least one session on the headset.
+2. Connect the headset to the PC with a USB cable and turn it on. It must be in developer mode.
+3. Put the headset on; if it asks **"Allow USB debugging?"**, choose **Allow** (tick "Always
+   allow from this computer" to skip this next time).
+4. In Unity, with your project open and compiled, choose **VR Emotion > Get Results From
+   Headset** in the top menu bar.
+5. A message says how many files were copied, and the `HeadsetResults` folder opens. Open a
+   file in Excel or Google Sheets: one row per prediction.
+
+It copies **all** session files on the headset, so the newest is always included (sort by name
+to find it). Clicking again is safe, and nothing is deleted from the headset. It needs Unity's
+Android Build Support, which provides `adb`; your app's package name is read from Player Settings.
+
+| Message | What to do |
+|---|---|
+| No headset found | Check the cable, that the headset is on and in developer mode |
+| The headset has not allowed this computer | Put it on and choose **Allow** (step 3) |
+| There are no results on the headset yet | Run a session with **Save Results** ticked |
+| Could not find adb | Unity Hub > Installs > Add modules > Android Build Support |
+
+`HeadsetResults` comes with its own `.gitignore`, so the results are never committed. The files
+describe real people: `NewFaceAuModel.DeleteSavedResults()` deletes them from the headset.
 
 
 ## 📝 License

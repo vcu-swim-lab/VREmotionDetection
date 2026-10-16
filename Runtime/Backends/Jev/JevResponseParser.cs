@@ -87,13 +87,11 @@ namespace VcuSwimLab.Backends.Jev
                 return null;
             }
 
-            if (!TryParseObject(body, out var root))
-            {
-                string text = body.Trim();
-                return text.Length > MaxDetailLength ? text.Substring(0, MaxDetailLength) : text;
-            }
+            string text = TryParseObject(body, out var root)
+                ? Text(root["error"]) ?? Text(root["message"]) ?? Text(root["detail"])
+                : body.Trim();
 
-            return Text(root["error"]) ?? Text(root["message"]) ?? Text(root["detail"]);
+            return text != null && text.Length > MaxDetailLength ? text.Substring(0, MaxDetailLength) : text;
         }
 
         private static string Text(JToken token)

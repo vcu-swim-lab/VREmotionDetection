@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 using VcuSwimLab.Calibration;
 
@@ -20,6 +21,7 @@ namespace VcuSwimLab.Backends.Jev
         private readonly float timeoutSeconds;
         private readonly int maxRetries;
         private readonly bool sendOwnFaces;
+        private readonly bool logRequests;
 
         public JevBackend(JevOptions options, IReadOnlyList<string> movementAuNames, IHttpTransport transport = null)
         {
@@ -46,10 +48,11 @@ namespace VcuSwimLab.Backends.Jev
             this.transport = transport ?? new UnityWebRequestTransport();
             apiKey = options.ApiKey;
             model = options.Model.Trim();
-            url = options.BaseUrl.TrimEnd('/') + SystemOnePath;
+            url = options.BaseUrl.Trim().TrimEnd('/') + SystemOnePath;
             timeoutSeconds = options.TimeoutSeconds;
             maxRetries = options.MaxRetries;
             sendOwnFaces = options.SendOwnFacesInRequest;
+            logRequests = options.LogRequests;
             Id = $"jev:{model}:p{JevPrompt.Version}";
         }
 
@@ -85,7 +88,13 @@ namespace VcuSwimLab.Backends.Jev
 
                 for (int attempt = 0; ; ++attempt)
                 {
+                    var clock = Stopwatch.StartNew();
                     var reply = await transport.PostJsonAsync(url, apiKey, body, timeoutSeconds);
+
+                    if (logRequests)
+                    {
+                        JevRequestLog.Write(url, reply, clock.ElapsedMilliseconds, attempt, maxRetries + 1, apiKey);
+                    }
 
                     if (reply.StatusCode >= 200 && reply.StatusCode < 300)
                     {
@@ -101,7 +110,7 @@ namespace VcuSwimLab.Backends.Jev
                     {
                         return Fail(
                             JevResponseParser.CodeFor(reply.StatusCode),
-                            JevResponseParser.FailureMessage(reply.StatusCode, reply.Body));
+                            JevResponseParser.FailureMessage(reply.StatusCode, JevRequestLog.Redact(reply.Body, apiKey)));
                     }
 
                     await Awaitable.WaitForSecondsAsync(BackoffSeconds(attempt, reply.RetryAfterSeconds));
@@ -109,7 +118,7 @@ namespace VcuSwimLab.Backends.Jev
             }
             catch (Exception e)
             {
-                return Fail(PredictionErrorCode.Internal, $"{e.GetType().Name}: {e.Message}");
+                return Fail(PredictionErrorCode.Internal, JevRequestLog.Redact($"{e.GetType().Name}: {e.Message}", apiKey));
             }
         }
 

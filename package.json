@@ -2,18 +2,37 @@
   "name": "com.vcu-swim-lab.vr-emotion-detection",
   "version": "2.2.0",
   "displayName": "VR Emotion Detector",
-  "description": "A package that helps with emotion detection in VR",
-  "unity": "2024.0",
+  "description": "Predicts seven emotions from Meta Quest Pro face tracking with an on-device model (SparseVr) or Typesafe's Jev model, with optional per-player calibration.",
+  "unity": "6000.0",
+  "keywords": [
+    "emotion",
+    "emotion detection",
+    "face tracking",
+    "Quest Pro",
+    "VR",
+    "calibration",
+    "Jev"
+  ],
   "license": "MIT",
   "author": {
     "name": "VCU SWIM Lab",
     "email": "taret@vcu.edu"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vcu-swim-lab/VREmotionDetection.git"
+  },
+  "documentationUrl": "https://github.com/vcu-swim-lab/VREmotionDetection#readme",
+  "changelogUrl": "https://github.com/vcu-swim-lab/VREmotionDetection/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/vcu-swim-lab/VREmotionDetection/blob/main/LICENSE",
   "dependencies": {
     "com.unity.ai.inference": "2.2.1",
     "com.meta.xr.sdk.core": "77.0.0",
     "com.unity.xr.openxr": "1.15.0",
-    "com.unity.nuget.newtonsoft-json": "3.2.1"
+    "com.unity.nuget.newtonsoft-json": "3.2.1",
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.unitywebrequest": "1.0.0"
   },
   "samples": [
     {
@@ -30,6 +49,11 @@
       "displayName": "Calibration Check",
       "description": "On the headset: calibrate, then compare uncalibrated and calibrated predictions on the same face data",
       "path": "Samples~/CalibrationCheck"
+    },
+    {
+      "displayName": "Jev Prediction",
+      "description": "Predicts with Typesafe's Jev model. The API key is passed as a parameter (here read from the TYPESAFE_API_KEY environment variable)",
+      "path": "Samples~/JevPrediction"
     }
   ]
 }

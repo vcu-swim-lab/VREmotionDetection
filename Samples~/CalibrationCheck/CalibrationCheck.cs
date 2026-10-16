@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using VcuSwimLab.Backends;
 using VcuSwimLab.Backends.Jev;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class CalibrationCheck : MonoBehaviour

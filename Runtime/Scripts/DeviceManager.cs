@@ -2,79 +2,82 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class DeviceManager : MonoBehaviour
+namespace VcuSwimLab.VREmotionDetection
 {
-    private const float FailureBackoffSeconds = 1f;
-
-    internal readonly Dictionary<InputType, Device> devices = new Dictionary<InputType, Device>();
-
-    private readonly Dictionary<InputType, float> nextPollTime = new Dictionary<InputType, float>();
-    private readonly List<InputType> pending = new List<InputType>();
-    private readonly HashSet<InputType> reported = new HashSet<InputType>();
-
-    void Update()
+    public class DeviceManager : MonoBehaviour
     {
-        pending.Clear();
-        pending.AddRange(devices.Keys);
+        private const float FailureBackoffSeconds = 1f;
 
-        float now = Time.time;
-        foreach (var ty in pending)
+        internal readonly Dictionary<InputType, Device> devices = new Dictionary<InputType, Device>();
+
+        private readonly Dictionary<InputType, float> nextPollTime = new Dictionary<InputType, float>();
+        private readonly List<InputType> pending = new List<InputType>();
+        private readonly HashSet<InputType> reported = new HashSet<InputType>();
+
+        void Update()
         {
-            if (!devices.TryGetValue(ty, out var device) ||
-                (nextPollTime.TryGetValue(ty, out float due) && now < due))
-            {
-                continue;
-            }
+            pending.Clear();
+            pending.AddRange(devices.Keys);
 
-            try
+            float now = Time.time;
+            foreach (var ty in pending)
             {
-                nextPollTime[ty] = now + PollAndDispatch(device);
-                reported.Remove(ty);
-            }
-            catch (Exception e)
-            {
-                nextPollTime[ty] = now + FailureBackoffSeconds;
-                if (reported.Add(ty))
+                if (!devices.TryGetValue(ty, out var device) ||
+                    (nextPollTime.TryGetValue(ty, out float due) && now < due))
                 {
-                    Debug.LogWarning($"{nameof(DeviceManager)}: polling {ty} failed ({e.GetType().Name}: {e.Message}); it will be retried.");
+                    continue;
+                }
+
+                try
+                {
+                    nextPollTime[ty] = now + PollAndDispatch(device);
+                    reported.Remove(ty);
+                }
+                catch (Exception e)
+                {
+                    nextPollTime[ty] = now + FailureBackoffSeconds;
+                    if (reported.Add(ty))
+                    {
+                        Debug.LogWarning($"{nameof(DeviceManager)}: polling {ty} failed ({e.GetType().Name}: {e.Message}); it will be retried.");
+                    }
                 }
             }
         }
-    }
 
-    internal static float PollAndDispatch(Device device)
-    {
-        var buf = new float[device.InputSpec.width];
-        var (interval, valid) = device.Poll(buf);
-
-        if (valid)
+        internal static float PollAndDispatch(Device device)
         {
-            device.OnPoll?.Invoke(device.InputSpec.ty, buf);
+            var buf = new float[device.InputSpec.width];
+            var (interval, valid) = device.Poll(buf);
+
+            if (valid)
+            {
+                device.OnPoll?.Invoke(device.InputSpec.ty, buf);
+            }
+
+            return interval;
         }
 
-        return interval;
-    }
-
-    public Device Require(InputType ty)
-    {
-        if (ty < 0 || ty >= InputType.Count)
+        public Device Require(InputType ty)
         {
-            throw new ArgumentOutOfRangeException(nameof(ty), ty, "not a device input type");
-        }
+            if (ty < 0 || ty >= InputType.Count)
+            {
+                throw new ArgumentOutOfRangeException(nameof(ty), ty, "not a device input type");
+            }
 
-        if (devices.TryGetValue(ty, out var existing))
-        {
-            return existing;
-        }
+            if (devices.TryGetValue(ty, out var existing))
+            {
+                return existing;
+            }
 
-        if (!DeviceRegistry.IsAvailable(ty))
-        {
-            throw new InvalidOperationException($"no device is available for input type {ty}");
-        }
+            if (!DeviceRegistry.IsAvailable(ty))
+            {
+                throw new InvalidOperationException($"no device is available for input type {ty}");
+            }
 
-        var device = DeviceRegistry.Create(ty, gameObject);
-        devices[ty] = device;
-        nextPollTime[ty] = Time.time;
-        return device;
+            var device = DeviceRegistry.Create(ty, gameObject);
+            devices[ty] = device;
+            nextPollTime[ty] = Time.time;
+            return device;
+        }
     }
 }

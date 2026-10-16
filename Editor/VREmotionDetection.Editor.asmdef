@@ -1,6 +1,6 @@
 {
     "name": "VREmotionDetection.Editor",
-    "rootNamespace": "",
+    "rootNamespace": "VcuSwimLab.VREmotionDetection",
     "references": [
         "VREmotionDetection"
     ],

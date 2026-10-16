@@ -1,6 +1,10 @@
-public enum InputType
+
+namespace VcuSwimLab.VREmotionDetection
 {
-    FaceAU,
-    Sound,
-    Count,
+    public enum InputType
+    {
+        FaceAU,
+        Sound,
+        Count,
+    }
 }

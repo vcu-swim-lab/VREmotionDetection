@@ -1,43 +1,46 @@
 using System;
 using UnityEngine;
 
-internal sealed class FaceWindowSource : IDisposable
+namespace VcuSwimLab.VREmotionDetection
 {
-    private readonly RingBuffer<float[]> buffer;
-    private readonly Device device;
-    private readonly Device.PollDelegate handler;
-
-    internal FaceWindowSource(Device device, int frames, int features)
+    internal sealed class FaceWindowSource : IDisposable
     {
-        this.device = device ?? throw new ArgumentNullException(nameof(device));
-        buffer = new RingBuffer<float[]>(frames, () => new float[features]);
-        handler = (type, data) => buffer.Push(data);
-        device.OnPoll += handler;
-    }
+        private readonly RingBuffer<float[]> buffer;
+        private readonly Device device;
+        private readonly Device.PollDelegate handler;
 
-    internal long Generation => buffer.Generation;
-
-    internal async Awaitable<float[][]> AwaitWindowAsync(float timeoutSeconds)
-    {
-        buffer.Clear();
-
-        float deadline = Time.realtimeSinceStartup + timeoutSeconds;
-
-        while (!buffer.Full)
+        internal FaceWindowSource(Device device, int frames, int features)
         {
-            if (Time.realtimeSinceStartup >= deadline)
-            {
-                return null;
-            }
-
-            await Awaitable.NextFrameAsync();
+            this.device = device ?? throw new ArgumentNullException(nameof(device));
+            buffer = new RingBuffer<float[]>(frames, () => new float[features]);
+            handler = (type, data) => buffer.Push(data);
+            device.OnPoll += handler;
         }
 
-        return buffer.Snapshot();
-    }
+        internal long Generation => buffer.Generation;
 
-    public void Dispose()
-    {
-        device.OnPoll -= handler;
+        internal async Awaitable<float[][]> AwaitWindowAsync(float timeoutSeconds)
+        {
+            buffer.Clear();
+
+            float deadline = Time.realtimeSinceStartup + timeoutSeconds;
+
+            while (!buffer.Full)
+            {
+                if (Time.realtimeSinceStartup >= deadline)
+                {
+                    return null;
+                }
+
+                await Awaitable.NextFrameAsync();
+            }
+
+            return buffer.Snapshot();
+        }
+
+        public void Dispose()
+        {
+            device.OnPoll -= handler;
+        }
     }
 }

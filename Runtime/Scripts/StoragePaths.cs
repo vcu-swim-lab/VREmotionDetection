@@ -1,6 +1,10 @@
-internal static class StoragePaths
+
+namespace VcuSwimLab.VREmotionDetection
 {
-    internal const string Root = "VREmotionDetection";
-    internal const string Results = "results";
-    internal const string Calibration = "calibration";
+    internal static class StoragePaths
+    {
+        internal const string Root = "VREmotionDetection";
+        internal const string Results = "results";
+        internal const string Calibration = "calibration";
+    }
 }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class BasicPredictor : MonoBehaviour

@@ -1,5 +1,6 @@
 using UnityEngine;
 using VcuSwimLab.Backends.Jev;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class JevPredictor : MonoBehaviour

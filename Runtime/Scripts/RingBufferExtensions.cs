@@ -2,56 +2,59 @@ using System;
 using Unity.InferenceEngine;
 using VcuSwimLab.Backends.SparseVr;
 
-public static class RingBufferExtensions
+namespace VcuSwimLab.VREmotionDetection
 {
-    public static Tensor<float> ToTensor(this RingBuffer<float[]> ring)
+    public static class RingBufferExtensions
     {
-        return WindowTensor.From(ring.buffer);
-    }
-
-    public static Tensor<float> ToTensor(this float[][] window)
-    {
-        return WindowTensor.From(window);
-    }
-
-    public static void Push(this RingBuffer<float[]> ring, float[] data)
-    {
-        if (data == null)
+        public static Tensor<float> ToTensor(this RingBuffer<float[]> ring)
         {
-            throw new ArgumentNullException(nameof(data));
+            return WindowTensor.From(ring.buffer);
         }
 
-        var tmp = ring.buffer[0];
-        if (data.Length != tmp.Length)
+        public static Tensor<float> ToTensor(this float[][] window)
         {
-            throw new ArgumentException(
-                $"Expected frame length {tmp.Length}, received {data.Length}.",
-                nameof(data));
+            return WindowTensor.From(window);
         }
 
-        for (int i = 0; i < ring.buffer.Length - 1; ++i)
+        public static void Push(this RingBuffer<float[]> ring, float[] data)
         {
-            ring.buffer[i] = ring.buffer[i + 1];
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+
+            var tmp = ring.buffer[0];
+            if (data.Length != tmp.Length)
+            {
+                throw new ArgumentException(
+                    $"Expected frame length {tmp.Length}, received {data.Length}.",
+                    nameof(data));
+            }
+
+            for (int i = 0; i < ring.buffer.Length - 1; ++i)
+            {
+                ring.buffer[i] = ring.buffer[i + 1];
+            }
+            ring.buffer[ring.buffer.Length - 1] = tmp;
+
+            Array.Copy(data, tmp, data.Length);
+            ring.counter++;
+            ring.generation++;
         }
-        ring.buffer[ring.buffer.Length - 1] = tmp;
 
-        Array.Copy(data, tmp, data.Length);
-        ring.counter++;
-        ring.generation++;
-    }
-
-    public static float[][] Snapshot(this RingBuffer<float[]> ring)
-    {
-        var copy = new float[ring.buffer.Length][];
-        for (int i = 0; i < ring.buffer.Length; ++i)
+        public static float[][] Snapshot(this RingBuffer<float[]> ring)
         {
-            copy[i] = (float[])ring.buffer[i].Clone();
+            var copy = new float[ring.buffer.Length][];
+            for (int i = 0; i < ring.buffer.Length; ++i)
+            {
+                copy[i] = (float[])ring.buffer[i].Clone();
+            }
+            return copy;
         }
-        return copy;
-    }
 
-    public static void Listen(this RingBuffer<float[]> ring, Device device)
-    {
-        device.OnPoll += (type, data) => ring.Push(data);
+        public static void Listen(this RingBuffer<float[]> ring, Device device)
+        {
+            device.OnPoll += (type, data) => ring.Push(data);
+        }
     }
 }

@@ -14,11 +14,4 @@ internal static class DeviceRegistry
     internal static bool IsAvailable(InputType ty) => Factories.ContainsKey(ty);
 
     internal static Device Create(InputType ty, GameObject go) => Factories[ty](go);
-
-    internal static Func<GameObject, Device> Replace(InputType ty, Func<GameObject, Device> factory)
-    {
-        Factories.TryGetValue(ty, out var previous);
-        Factories[ty] = factory;
-        return previous;
-    }
 }

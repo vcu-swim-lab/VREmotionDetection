@@ -77,11 +77,4 @@ public class DeviceManager : MonoBehaviour
         nextPollTime[ty] = Time.time;
         return device;
     }
-
-    internal void Disable(InputType ty)
-    {
-        devices.Remove(ty);
-        nextPollTime.Remove(ty);
-        reported.Remove(ty);
-    }
 }

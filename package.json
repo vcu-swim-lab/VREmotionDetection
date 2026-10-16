@@ -1,9 +1,10 @@
 {
   "name": "com.vcu-swim-lab.vr-emotion-detection",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "displayName": "VR Emotion Detector",
   "description": "Predicts seven emotions from Meta Quest Pro face tracking with an on-device model (SparseVr) or Typesafe's Jev model, with optional per-player calibration.",
   "unity": "6000.0",
+  "unityRelease": "33f1",
   "keywords": [
     "emotion",
     "emotion detection",
@@ -16,13 +17,14 @@
   "license": "MIT",
   "author": {
     "name": "VCU SWIM Lab",
-    "email": "taret@vcu.edu"
+    "email": "kdamevski@vcu.edu"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/vcu-swim-lab/VREmotionDetection.git"
   },
   "documentationUrl": "https://github.com/vcu-swim-lab/VREmotionDetection#readme",
+  "changelogUrl": "https://github.com/vcu-swim-lab/VREmotionDetection/blob/main/CHANGELOG.md",
   "licensesUrl": "https://github.com/vcu-swim-lab/VREmotionDetection/blob/main/LICENSE",
   "dependencies": {
     "com.unity.ai.inference": "2.2.1",

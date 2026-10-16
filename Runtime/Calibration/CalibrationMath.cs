@@ -3,72 +3,18 @@ using System.Collections.Generic;
 
 namespace VcuSwimLab.Calibration
 {
-    /// <summary>
-    /// The calibration arithmetic, ported one operation at a time from
-    /// `Analysis/calibration_study.py`.
-    /// </summary>
-    /// <remarks>
-    /// Nothing here is a re-derivation. Every method below names the Python function it
-    /// mirrors, and `Analysis/make_runtime_parity_fixture.py` generates a golden fixture from
-    /// those same Python functions which the tests replay through this class. If a change
-    /// here alters a single prediction the parity test fails, which is the point: the offline
-    /// result and the headset result have to be the same number computed twice, not two
-    /// numbers that happen to agree.
-    ///
-    /// Everything is `double`. The Python pipeline carries `float32` through `np.log` and the
-    /// matmul, so the two are not bit-identical; the fixture pins the `float64` reference
-    /// tightly and separately asserts that the `float32` pipeline reaches the same argmax on
-    /// every tick. Where that could stop being true -- a near-tie between two centroids -- the
-    /// margin is logged, so it is visible in the data rather than assumed away.
-    /// </remarks>
     public static class CalibrationMath
     {
-        /// <summary>
-        /// The log clamp. Frozen at 1e-12 and matched to `calibration_study.DEFAULT_EPSILON`.
-        /// </summary>
-        /// <remarks>
-        /// The exported graph ends in Softmax and can emit values small enough to underflow;
-        /// without a floor a single 0.0 sends a whole feature vector to -inf and every
-        /// similarity becomes NaN. 1e-12 sits provably below every score observed in the
-        /// corpus (smallest ~7e-06), so it is inert on real data and only catches underflow.
-        /// </remarks>
         public const double Epsilon = 1e-12;
 
-        /// <summary>
-        /// The weight on the personal term, frozen before the EmojiHero test split was
-        /// opened and never re-selected since.
-        /// </summary>
-        /// <remarks>
-        /// Selected on the EmojiHero validation split (n=8) as the argmax of
-        /// participant-equal mean sequence macro-F1 over a 21-point grid. It is `const`, and
-        /// no inspector field, command line or config file can move it: the value is an
-        /// experimental constant of a preregistered study, and a session recorded at some
-        /// other alpha is not a session of that study.
-        ///
-        /// Read it as "40% personal, 60% population". The selection curve is very flat
-        /// (0.40 vs 0.45 differ by 0.00053), so the plateau is the robust finding and the
-        /// exact argmax is not -- which is a reason to keep the number fixed, not a reason
-        /// to let it drift.
-        /// </remarks>
         public const double FrozenHybridAlpha = 0.40;
 
-        /// <summary>
-        /// Added to every vector norm before dividing, mirroring the `+ 1e-12` in
-        /// `calibration_study.classify`. It keeps a zero vector from producing NaN.
-        /// </summary>
         public const double NormFloor = 1e-12;
 
         public const string FeatureSpaceName = "logscore";
         public const string TransformName = "log(clip(score, epsilon))";
         public const string MetricName = "cosine";
 
-        /// <summary>
-        /// `calibration_study.logscore`: log(max(score, epsilon)), elementwise.
-        /// </summary>
-        /// <exception cref="ArgumentException">
-        /// A non-finite score. Refused rather than clamped: NaN out of the graph means the
-        /// inference went wrong, and a centroid averaged over it is silently meaningless.
-        /// </exception>
         public static double[] LogScore(IReadOnlyList<float> scores)
         {
             if (scores == null) throw new ArgumentNullException(nameof(scores));
@@ -90,10 +36,6 @@ namespace VcuSwimLab.Calibration
             return result;
         }
 
-        /// <summary>
-        /// `calibration_study.centroids`, for one class: the arithmetic mean of that class's
-        /// feature vectors.
-        /// </summary>
         public static double[] Mean(IReadOnlyList<double[]> vectors)
         {
             if (vectors == null) throw new ArgumentNullException(nameof(vectors));
@@ -128,14 +70,6 @@ namespace VcuSwimLab.Calibration
             return sum;
         }
 
-        /// <summary>
-        /// The hybrid blend: <c>H_e = alpha * P_e + (1 - alpha) * G_e</c>, row by row.
-        /// </summary>
-        /// <remarks>
-        /// Both matrices are indexed by the frozen class order, so row e of each is the same
-        /// emotion. Mirrors `hybrid_alpha * M + (1.0 - hybrid_alpha) * population_rows` in
-        /// `calibration_study.evaluate`.
-        /// </remarks>
         public static double[][] Blend(double[][] personal, double[][] population, double alpha)
         {
             if (personal == null) throw new ArgumentNullException(nameof(personal));
@@ -173,16 +107,6 @@ namespace VcuSwimLab.Calibration
             return blended;
         }
 
-        /// <summary>
-        /// <c>v / (||v|| + 1e-12)</c>, the normalisation `calibration_study.classify` applies
-        /// to both the centroids and the features before taking their dot product.
-        /// </summary>
-        /// <remarks>
-        /// Normalising first and then taking the dot product -- rather than the algebraically
-        /// equal `dot / (norm * norm)` -- keeps the order of floating-point operations the
-        /// same as the Python, so the two cannot disagree in the last bits for a reason that
-        /// has nothing to do with the calibration.
-        /// </remarks>
         public static double[] Normalized(double[] vector)
         {
             if (vector == null) throw new ArgumentNullException(nameof(vector));
@@ -222,22 +146,9 @@ namespace VcuSwimLab.Calibration
             return total;
         }
 
-        /// <summary>Cosine similarity as `classify` computes it.</summary>
         public static double CosineSimilarity(double[] a, double[] b)
             => Dot(Normalized(a), Normalized(b));
 
-        /// <summary>
-        /// Nearest centroid by cosine similarity: the winner, its similarity, the runner-up's
-        /// similarity, and the margin between them.
-        /// </summary>
-        /// <remarks>
-        /// `calibration_study.classify` reads the winner off `np.argsort(-sim)`. For a
-        /// seven-element row NumPy sorts with insertion sort, which is stable, so an exact
-        /// tie resolves to the lower class index. The strictly-greater comparison below is
-        /// that same rule stated outright rather than inherited from a sort implementation --
-        /// and `make_runtime_parity_fixture.py` includes a hand-built exact tie so the two
-        /// are checked against each other rather than assumed equal.
-        /// </remarks>
         public static NearestCentroid Nearest(double[][] centroids, double[] feature)
         {
             if (centroids == null) throw new ArgumentNullException(nameof(centroids));
@@ -259,7 +170,6 @@ namespace VcuSwimLab.Calibration
             {
                 double similarity = Dot(unitFeature, Normalized(centroids[e]));
 
-                // Strictly greater: on an exact tie the earlier class index keeps the win.
                 if (similarity > bestSimilarity)
                 {
                     runnerUp = bestSimilarity;
@@ -275,13 +185,6 @@ namespace VcuSwimLab.Calibration
             return new NearestCentroid(best, bestSimilarity, runnerUp, bestSimilarity - runnerUp);
         }
 
-        // ------------------------------------------------------------ movement calibration
-
-        /// <summary>
-        /// The face action units of a window: the first 63 features. The last 7 are tongue
-        /// values, which say nothing about the expression and are left out of the movement
-        /// feature. Mirrors `calibration_study.FACE_AU_COUNT`.
-        /// </summary>
         public const int FaceActionUnitCount = 63;
 
         public const string MovementFeatureName =
@@ -290,14 +193,6 @@ namespace VcuSwimLab.Calibration
             "nearest class by (cosine to the personal log-score centroid) + "
             + "(cosine to the personal movement centroid); winner, runner-up and margin are these sums";
 
-        /// <summary>
-        /// `calibration_study.movement_feature` for one window: the mean over its frames of each
-        /// face action unit.
-        /// </summary>
-        /// <exception cref="ArgumentException">
-        /// An empty window, a frame narrower than 63 features, or a non-finite value. Refused
-        /// rather than repaired, for the same reason `LogScore` refuses NaN.
-        /// </exception>
         public static double[] MovementFeature(IReadOnlyList<float[]> window)
         {
             if (window == null) throw new ArgumentNullException(nameof(window));
@@ -338,15 +233,6 @@ namespace VcuSwimLab.Calibration
             return sum;
         }
 
-        /// <summary>
-        /// Movement calibration's decision: per class, the cosine of the score feature to that
-        /// class's score centroid plus the cosine of the movement feature to its movement
-        /// centroid. The highest sum wins. Mirrors `calibration_study.classify_movement`.
-        /// </summary>
-        /// <remarks>
-        /// Same tie rule as `Nearest`: strictly greater, so an exact tie keeps the lower class
-        /// index, as `np.argsort` on a seven-element row does.
-        /// </remarks>
         public static NearestCentroid NearestOfSum(double[][] scoreCentroids, double[] scoreFeature,
                                                    double[][] movementCentroids, double[] movementFeature)
         {
@@ -394,7 +280,6 @@ namespace VcuSwimLab.Calibration
         }
     }
 
-    /// <summary>One tick's nearest-centroid decision.</summary>
     public readonly struct NearestCentroid
     {
         public readonly int ClassIndex;

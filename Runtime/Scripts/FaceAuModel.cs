@@ -1,14 +1,12 @@
 using System.Diagnostics;
 using Unity.InferenceEngine;
+using VcuSwimLab.Backends.SparseVr;
 using Unity.Collections;
 using UnityEngine;
 using System.Collections.Generic;
 
 using Debug = UnityEngine.Debug;
 
-// The original predictor, combining a natural-data and an acted-data model. Kept so existing
-// scenes still load; new projects use `NewFaceAuModel`, which runs the acted-data model.
-// Its two models are archived in `Archive~/Models`.
 [System.Obsolete("Use NewFaceAuModel, which runs the acted-data model and supports calibration.")]
 [RequireComponent(typeof(OVRFaceExpressions))]
 [RequireComponent(typeof(DeviceManager))]
@@ -29,16 +27,13 @@ public class FaceAuModel : MonoBehaviour
 
     public void Start()
     {
-        Debug.Assert(naturalModel != null, $"Natural model not assigned in ${GetType().Name}");
-        Debug.Assert(actedModel != null, $"Acted model not assigned in ${GetType().Name}");
+        if (naturalModel == null) Debug.LogError($"Natural model not assigned in {GetType().Name}");
+        if (actedModel == null) Debug.LogError($"Acted model not assigned in {GetType().Name}");
 
-        // `natural_trial_96.onnx` and `act_trial_92.onnx` both already end in a Softmax
-        // node and output probabilities; appending another would corrupt the weighted
-        // blend in `Predict` below, which assumes both inputs are on a probability scale.
-        naturalModelObject = Utils.PrepareModel(naturalModel, appendSoftmax: false);
+        naturalModelObject = OnnxModelLoader.Prepare(naturalModel, appendSoftmax: false);
         naturalWorker = new Worker(naturalModelObject, BackendType.GPUCompute);
 
-        actedModelObject = Utils.PrepareModel(actedModel, appendSoftmax: false);
+        actedModelObject = OnnxModelLoader.Prepare(actedModel, appendSoftmax: false);
         actedWorker = new Worker(actedModelObject, BackendType.GPUCompute);
 
         var deviceManager = GetComponent<DeviceManager>();
@@ -64,11 +59,9 @@ public class FaceAuModel : MonoBehaviour
         var actedTensor = await actedWorker.PeekOutput().ReadbackAndCloneAsync();
         return (
             naturalTensor as Tensor<float>,
-            actedTensor as Tensor<float>//
+            actedTensor as Tensor<float>
         );
     }
-
-    // TODO: `Predict` that doesn't wait on new data, just uses whatever is in the buffer.
 
     public async Awaitable<(Tensor<float>, Tensor<float>)> PredictRaw()
     {
@@ -79,7 +72,6 @@ public class FaceAuModel : MonoBehaviour
             await Awaitable.NextFrameAsync();
         }
 
-        // TODO: should you dispose the tensor?
         var input = inputBuffer.ToTensor();
 
         return await Infer(input);
@@ -122,10 +114,9 @@ public class FaceAuModel : MonoBehaviour
         return ((Emotion)maxIndex, maxValue);
     }
 
-
     void OnDisable()
     {
-        naturalWorker.Dispose();
-        actedWorker.Dispose();
+        naturalWorker?.Dispose();
+        actedWorker?.Dispose();
     }
 }

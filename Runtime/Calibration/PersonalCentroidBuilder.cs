@@ -4,37 +4,12 @@ using System.Globalization;
 
 namespace VcuSwimLab.Calibration
 {
-    /// <summary>
-    /// Collects the calibration block's log-score vectors and fits one centroid per class.
-    /// </summary>
-    /// <remarks>
-    /// Mirrors what `calibration_study.evaluate` does with `role_masks(..., SCORED_TICKS)`:
-    /// take the calibration-block rows whose tick index is 1..9, transform them to log-scores,
-    /// and average them per class. The `required_ticks` gate is here too, and it refuses
-    /// rather than averages -- a centroid built from two of nine ticks is not a weaker version
-    /// of the same estimate, it is a different one, and producing it quietly is how a bad
-    /// recording turns into a result.
-    /// </remarks>
     public sealed class PersonalCentroidBuilder
     {
-        /// <summary>
-        /// First scored tick. Tick 0 is a transition sample, caught as the hold screen appears
-        /// and before the participant has begun; every block drops it.
-        /// </summary>
         public const int FirstScoredTick = 1;
 
-        /// <summary>Last scored tick, so a complete hold contributes nine.</summary>
         public const int LastScoredTick = 9;
 
-        /// <summary>
-        /// Ticks a class must contribute before a centroid is fitted for it.
-        /// </summary>
-        /// <remarks>
-        /// `calibration_study.TICKS_REQUIRED_PER_CENTROID`. The Python asks for *at least*
-        /// nine; with ticks 1..9 the most a trial can offer is nine, so the two conditions
-        /// coincide. This side checks for exactly nine, which additionally catches a protocol
-        /// that started emitting more ticks per trial without the analysis being told.
-        /// </remarks>
         public const int RequiredTicksPerCentroid = 9;
 
         private readonly int classCount;
@@ -59,18 +34,11 @@ namespace VcuSwimLab.Calibration
             }
         }
 
-        /// <summary>Whether a tick index is inside the scored window.</summary>
         public static bool IsScoredTick(int tickIndex)
             => tickIndex >= FirstScoredTick && tickIndex <= LastScoredTick;
 
-        /// <summary>Scored ticks accepted so far for a class.</summary>
         public int TickCount(int classIndex) => observations[classIndex].Count;
 
-        /// <summary>
-        /// Offer one calibration tick. Ticks outside 1..9 are ignored, which is how tick 0
-        /// stays out of the centroid.
-        /// </summary>
-        /// <returns>True when the tick was taken into the centroid.</returns>
         public bool Observe(int classIndex, int tickIndex, IReadOnlyList<float> scores)
         {
             if (classIndex < 0 || classIndex >= classCount)
@@ -86,9 +54,6 @@ namespace VcuSwimLab.Calibration
 
             offered[classIndex]++;
 
-            // A tick with no scores is an untracked tick; it is logged as such and simply does
-            // not reach the centroid, which is what makes the count below fall short and the
-            // whole calibration fail rather than quietly average over fewer samples.
             if (scores == null)
             {
                 return false;
@@ -114,14 +79,6 @@ namespace VcuSwimLab.Calibration
             }
         }
 
-        /// <summary>
-        /// Fit the centroids, or explain why not.
-        /// </summary>
-        /// <remarks>
-        /// Never returns a partial set. The caller has exactly two outcomes to handle --
-        /// a complete profile, or a session marked invalid with a reason -- and no third one
-        /// where some classes calibrated and the rest fell back to something else.
-        /// </remarks>
         public bool TryBuild(IReadOnlyList<string> classNames, out double[][] centroids, out string error)
         {
             centroids = null;
@@ -180,7 +137,6 @@ namespace VcuSwimLab.Calibration
             return true;
         }
 
-        /// <summary>Per-class scored-tick counts, for the session metadata.</summary>
         public int[] TickCounts()
         {
             var counts = new int[classCount];
@@ -194,8 +150,6 @@ namespace VcuSwimLab.Calibration
 
         private void Fault(string message)
         {
-            // First fault wins: the later ones are usually the same cause reported again, and
-            // the operator needs the thing that went wrong first.
             if (fault == null) fault = message;
         }
     }

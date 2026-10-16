@@ -4,16 +4,6 @@ using System.Globalization;
 
 namespace VcuSwimLab.Calibration
 {
-    /// <summary>
-    /// Collects the calibration block's movement features and fits one movement centroid per
-    /// class: the player's typical face for each emotion.
-    /// </summary>
-    /// <remarks>
-    /// The movement counterpart of `PersonalCentroidBuilder`, with the same rules: ticks 1..9
-    /// only, exactly nine per class, and refuse rather than average over fewer. The feature is
-    /// `CalibrationMath.MovementFeature` -- the mean over the window's frames of the 63 face
-    /// action units -- instead of the log-scores.
-    /// </remarks>
     public sealed class MovementCentroidBuilder
     {
         private readonly int classCount;
@@ -36,14 +26,8 @@ namespace VcuSwimLab.Calibration
             }
         }
 
-        /// <summary>Scored windows accepted so far for a class.</summary>
         public int TickCount(int classIndex) => observations[classIndex].Count;
 
-        /// <summary>
-        /// Offer one calibration tick's window. Ticks outside 1..9 are ignored, and a null
-        /// window is an untracked tick that does not reach the centroid.
-        /// </summary>
-        /// <returns>True when the window was taken into the centroid.</returns>
         public bool Observe(int classIndex, int tickIndex, IReadOnlyList<float[]> window)
         {
             if (classIndex < 0 || classIndex >= classCount)
@@ -70,7 +54,6 @@ namespace VcuSwimLab.Calibration
             }
         }
 
-        /// <summary>Fit the movement centroids, or explain why not. Never a partial set.</summary>
         public bool TryBuild(IReadOnlyList<string> classNames, out double[][] centroids, out string error)
         {
             centroids = null;

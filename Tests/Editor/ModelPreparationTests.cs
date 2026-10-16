@@ -1,13 +1,8 @@
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEditor;
+using VcuSwimLab.Backends.SparseVr;
 
-// Pins the per-model softmax decision made in `Utils.PrepareModel`.
-//
-// The face graph already ends in Softmax, so appending another squashes the output and
-// leaves the reported confidence meaningless. Getting it wrong is silent -- argmax is
-// unaffected -- hence this test. (The voice model, which needed the softmax, is archived in
-// Archive~/Models along with its tests' subject.)
 public class ModelPreparationTests
 {
     private const string ModelDir = "Packages/com.vcu-swim-lab.vr-emotion-detection/Runtime/Models/";
@@ -50,7 +45,7 @@ public class ModelPreparationTests
     {
         var asset = LoadAsset("sparseVR_teacher_model_acted_only_vol-aug-k1_with-EmojiHero.onnx");
 
-        var model = Utils.PrepareModel(asset, appendSoftmax: false);
+        var model = OnnxModelLoader.Prepare(asset, appendSoftmax: false);
         var scores = RunOnZeros(model, new TensorShape(1, 5, 70));
 
         Assert.That(scores.Length, Is.EqualTo(7), "The teacher should emit one score per class.");

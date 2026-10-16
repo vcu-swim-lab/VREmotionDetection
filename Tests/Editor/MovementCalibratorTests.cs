@@ -20,7 +20,6 @@ public class MovementCalibratorTests
         return scores;
     }
 
-    // Five frames of 70 values; emotion `cls` moves its own block of face AUs.
     private static float[][] Window(int cls)
     {
         var window = new float[5][];
@@ -88,7 +87,6 @@ public class MovementCalibratorTests
     {
         var calibrator = Calibrated();
 
-        // The model says Anger, the face moves like Sadness: the decision is the sum of both cosines.
         var scores = Scores(0);
         var window = Window(5);
         var decision = calibrator.Classify(scores, window);
@@ -131,7 +129,6 @@ public class MovementCalibratorTests
             Assert.IsFalse(calibrator.ObserveAt(0, Scores(cls), Window(cls)), "position 0 is dropped");
             for (int i = 1; i <= 9; ++i)
             {
-                // Anger loses position 5 to a tracking dropout; the clock does not wait for it.
                 bool missed = cls == 0 && i == 5;
                 Assert.AreEqual(!missed, calibrator.ObserveAt(i, missed ? null : Scores(cls), Window(cls)));
             }

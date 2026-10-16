@@ -1,36 +1,40 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using VcuSwimLab.Backends;
 
-// Saves every prediction of one session to a CSV file on the device, and keeps a running
-// summary. One file per session (one run of the app), opened at the first prediction.
-//
-// Columns: time_utc, seconds, emotion, confidence, calibrated, model_emotion.
-// `emotion` is what the game received (calibrated when calibration is on); `model_emotion`
-// is the model's own answer. Raw face-tracking values are not saved.
-//
-// Files: Application.persistentDataPath/VREmotionDetection/results/session_<time>.csv. On the
-// headset, Unity's menu "VR Emotion > Get Results From Headset" copies them to the PC.
+using Debug = UnityEngine.Debug;
+
 internal sealed class ResultsRecorder : IDisposable
 {
-    public const string FolderName = "results";
+    public const string Header = "time_utc,seconds,emotion,confidence,calibrated,model_emotion";
 
     private readonly int[] counts = new int[Enum.GetValues(typeof(Emotion)).Length];
     private readonly double[] confidenceSums = new double[Enum.GetValues(typeof(Emotion)).Length];
-    private int noTracking;
-    private int jevErrors;
+    private readonly string folderOverride;
+    private readonly Stopwatch sessionClock = new Stopwatch();
 
+    private int noTracking;
+    private int backendErrors;
     private StreamWriter writer;
     private DateTime? startedUtc;
+    private bool headerWritten;
+    private bool disposed;
+
+    public ResultsRecorder(string folder = null)
+    {
+        folderOverride = folder;
+    }
 
     public string FilePath { get; private set; }
 
     public static string Folder =>
-        Path.Combine(Application.persistentDataPath, "VREmotionDetection", FolderName);
+        Path.Combine(Application.persistentDataPath, StoragePaths.Root, StoragePaths.Results);
 
     public void Record(Emotion emotion, float confidence, bool calibrated, Emotion modelEmotion)
     {
@@ -45,18 +49,22 @@ internal sealed class ResultsRecorder : IDisposable
             modelEmotion.ToString()));
     }
 
-    // A prediction that could not be made because face tracking gave no valid frames.
-    public void RecordNoTracking()
+    public void RecordFailure(PredictionErrorCode code)
     {
-        noTracking++;
-        Write(string.Join(",", Stamp(), "no_tracking", "", "", ""));
-    }
-
-    // A prediction that the Jev backend could not answer (no key, no network, an API error).
-    public void RecordJevError()
-    {
-        jevErrors++;
-        Write(string.Join(",", Stamp(), "jev_error", "", "", ""));
+        switch (code)
+        {
+            case PredictionErrorCode.NoTracking:
+                noTracking++;
+                Write(string.Join(",", Stamp(), "no_tracking", "", "", ""));
+                break;
+            case PredictionErrorCode.NotReady:
+            case PredictionErrorCode.Busy:
+                break;
+            default:
+                backendErrors++;
+                Write(string.Join(",", Stamp(), "backend_error", "", "", ""));
+                break;
+        }
     }
 
     public string Summary()
@@ -69,13 +77,13 @@ internal sealed class ResultsRecorder : IDisposable
                 return "No emotions recorded: face tracking was not available.";
             }
 
-            return jevErrors > 0
-                ? "No emotions recorded: Jev did not answer."
+            return backendErrors > 0
+                ? "No emotions recorded: the backend did not answer."
                 : "No emotions recorded yet.";
         }
 
-        // Invariant culture: the same "0.75" on every device, whatever its language settings.
         var inv = CultureInfo.InvariantCulture;
+        int attempts = total + noTracking + backendErrors;
         var lines = new List<string>
         {
             string.Format(inv, "{0} predictions over {1:0.0} min", total, Seconds() / 60.0),
@@ -90,67 +98,85 @@ internal sealed class ResultsRecorder : IDisposable
 
         if (noTracking > 0)
         {
-            lines.Add(string.Format(inv, "No face tracking: {0} of {1} predictions",
-                                    noTracking, total + noTracking + jevErrors));
+            lines.Add(string.Format(inv, "No face tracking: {0} of {1} predictions", noTracking, attempts));
         }
 
-        if (jevErrors > 0)
+        if (backendErrors > 0)
         {
-            lines.Add(string.Format(inv, "Jev did not answer: {0} of {1} predictions",
-                                    jevErrors, total + noTracking + jevErrors));
+            lines.Add(string.Format(inv, "Backend did not answer: {0} of {1} predictions", backendErrors, attempts));
         }
 
         return string.Join("\n", lines);
     }
 
-    // Seconds since the session's first prediction.
-    private double Seconds() => startedUtc.HasValue ? (DateTime.UtcNow - startedUtc.Value).TotalSeconds : 0;
+    public void Close()
+    {
+        writer?.Dispose();
+        writer = null;
+    }
 
-    // "time_utc,seconds" for a new row; the first row starts the session clock.
+    public void Dispose()
+    {
+        Close();
+        disposed = true;
+    }
+
+    private double Seconds() => startedUtc.HasValue ? sessionClock.Elapsed.TotalSeconds : 0;
+
     private string Stamp()
     {
         var now = DateTime.UtcNow;
-        startedUtc ??= now;
+        if (!startedUtc.HasValue)
+        {
+            startedUtc = now;
+            sessionClock.Start();
+        }
+
         return now.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture) + "," +
-               (now - startedUtc.Value).TotalSeconds.ToString("0.000", CultureInfo.InvariantCulture);
+               sessionClock.Elapsed.TotalSeconds.ToString("0.000", CultureInfo.InvariantCulture);
     }
 
     private void Write(string line)
     {
+        if (disposed)
+        {
+            return;
+        }
+
         try
         {
             if (writer == null)
             {
-                bool created = FilePath == null;
-                if (created)
-                {
-                    Directory.CreateDirectory(Folder);
-                    FilePath = Path.Combine(Folder,
-                        "session_" + startedUtc.Value.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture) + ".csv");
-                }
-
-                // No BOM, so Excel, pandas and csv readers all see the first column's real name.
+                FilePath ??= ReservePath();
                 writer = new StreamWriter(FilePath, append: true, new UTF8Encoding(false)) { AutoFlush = true };
-                if (created)
-                {
-                    writer.WriteLine("time_utc,seconds,emotion,confidence,calibrated,model_emotion");
-                }
+            }
+
+            if (!headerWritten)
+            {
+                writer.WriteLine(Header);
+                headerWritten = true;
             }
 
             writer.WriteLine(line);
         }
         catch (Exception e)
         {
-            // Saving results must never stop the game.
             Debug.LogWarning($"VREmotionDetection: could not save results ({e.GetType().Name}: {e.Message})");
         }
     }
 
-    // Closes the file; the next prediction reopens it and appends. Called when the app is
-    // paused (the headset taken off), so nothing is lost if it is never resumed.
-    public void Dispose()
+    private string ReservePath()
     {
-        writer?.Dispose();
-        writer = null;
+        string folder = folderOverride ?? Folder;
+        Directory.CreateDirectory(folder);
+
+        string stem = "session_" + startedUtc.Value.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+        string path = Path.Combine(folder, stem + ".csv");
+        for (int suffix = 2; File.Exists(path); ++suffix)
+        {
+            path = Path.Combine(folder, stem + "_" + suffix + ".csv");
+        }
+
+        return path;
     }
 }

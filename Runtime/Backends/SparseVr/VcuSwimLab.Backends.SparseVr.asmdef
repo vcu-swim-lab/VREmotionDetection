@@ -1,0 +1,18 @@
+{
+    "name": "VcuSwimLab.Backends.SparseVr",
+    "rootNamespace": "VcuSwimLab.Backends.SparseVr",
+    "references": [
+        "VcuSwimLab.Backends",
+        "VcuSwimLab.Calibration",
+        "Unity.InferenceEngine"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

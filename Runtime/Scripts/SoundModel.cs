@@ -1,14 +1,12 @@
 using System.Diagnostics;
 using Unity.InferenceEngine;
+using VcuSwimLab.Backends.SparseVr;
 using Unity.Collections;
 using UnityEngine;
 using System.Collections.Generic;
 
 using Debug = UnityEngine.Debug;
 
-// Experimental voice predictor, unfinished and unused. Its two models are archived in
-// `Archive~/Models`; move them back to `Runtime/Models` to work on it again.
-// [RequireComponent(typeof(DeviceManager))]
 public class SoundModel : MonoBehaviour
 {
     [SerializeField]
@@ -25,15 +23,13 @@ public class SoundModel : MonoBehaviour
 
     void Start()
     {
-        Debug.Assert(logmelVoiceModel != null, $"Logmel model not assigned in ${GetType().Name}");
-        Debug.Assert(voiceModel != null, $"Voice model not assigned in ${GetType().Name}");
+        if (logmelVoiceModel == null) Debug.LogError($"Logmel model not assigned in {GetType().Name}");
+        if (voiceModel == null) Debug.LogError($"Voice model not assigned in {GetType().Name}");
 
         logmelVoiceModelObject = ModelLoader.Load(logmelVoiceModel);
         logmelVoiceWorker = new Worker(logmelVoiceModelObject, BackendType.GPUCompute);
 
-        // `sound_model.onnx` ends in Gemm and emits raw logits (they sum to ~0.39 and can
-        // be negative), so unlike the face models it genuinely needs a softmax appended.
-        voiceModelObject = Utils.PrepareModel(voiceModel, appendSoftmax: true);
+        voiceModelObject = OnnxModelLoader.Prepare(voiceModel, appendSoftmax: true);
         voiceWorker = new Worker(voiceModelObject, BackendType.GPUCompute);
 
         Debug.Log("SoundModel initialized.");
@@ -55,7 +51,6 @@ public class SoundModel : MonoBehaviour
     {
         return await Infer(audioInput);
     }
-
 
     public async Awaitable<(Emotion, float)> Predict(Tensor<float> audioInput = null)
     {
@@ -84,7 +79,6 @@ public class SoundModel : MonoBehaviour
 
     public static Tensor<float> PrepareAudio(AudioClip originalClip)
     {
-        // TODO(Terens): add resampling at some point in the future
         int targetLengthSeconds = 30;
 
         int channels = originalClip.channels;
@@ -92,7 +86,6 @@ public class SoundModel : MonoBehaviour
 
         int targetSamples = targetLengthSeconds * frequency;
 
-        // Get original samples
         float[] data = new float[targetSamples];
         originalClip.GetData(data, 0);
 
@@ -101,6 +94,7 @@ public class SoundModel : MonoBehaviour
 
     void OnDisable()
     {
-        voiceWorker.Dispose();
+        logmelVoiceWorker?.Dispose();
+        voiceWorker?.Dispose();
     }
 }

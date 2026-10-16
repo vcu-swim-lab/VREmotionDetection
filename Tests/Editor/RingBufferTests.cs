@@ -38,8 +38,6 @@ public class RingBufferTests
         StringAssert.Contains("Expected frame length 2, received 3", exception.Message);
     }
 
-    // The original bug was reference aliasing, so assert reference identity directly
-    // rather than inferring it from the values.
     [Test]
     public void Push_KeepsEveryFrameBackedByADistinctArray()
     {
@@ -61,9 +59,6 @@ public class RingBufferTests
         }
     }
 
-    // Documents the defect this class exists to prevent. It reimplements the original
-    // four-line shift on its own array, so it keeps passing regardless of the production
-    // code and cannot silently rot.
     [Test]
     public void LegacyShift_CollapsesEverySlotOntoOneArray()
     {
@@ -75,8 +70,6 @@ public class RingBufferTests
 
         for (int frame = 1; frame <= 5; frame++)
         {
-            // The original implementation: assigning slots without first saving the
-            // array being displaced, so each assignment aliases two slots together.
             for (int i = 0; i < buffer.Length - 1; ++i)
             {
                 buffer[i] = buffer[i + 1];
@@ -106,7 +99,6 @@ public class RingBufferTests
 
         var snapshot = ring.Snapshot();
 
-        // Rotate the whole window out from under the snapshot.
         for (int frame = 6; frame <= 10; frame++)
         {
             ring.Push(new[] { (float)frame, frame + 0.25f });
@@ -133,8 +125,6 @@ public class RingBufferTests
         Assert.That(fromSnapshot.shape, Is.EqualTo(fromRing.shape));
     }
 
-    // `counter` is reset by Clear so a prediction can wait for a fresh window;
-    // `generation` must not be, because it is what reveals dropped frames.
     [Test]
     public void Generation_IsMonotonicAcrossClear()
     {

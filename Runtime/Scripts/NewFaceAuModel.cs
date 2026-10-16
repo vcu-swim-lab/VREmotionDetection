@@ -1,98 +1,33 @@
 using System;
-using System.Diagnostics;
 using Unity.InferenceEngine;
-using Unity.Collections;
 using UnityEngine;
-using System.Collections.Generic;
+using VcuSwimLab.Backends;
+using VcuSwimLab.Backends.Jev;
+using VcuSwimLab.Backends.SparseVr;
 using VcuSwimLab.Calibration;
-using VcuSwimLab.Jev;
 
-using Debug = UnityEngine.Debug;
-
-public enum PredictionBackend
-{
-    LocalModel,
-    Jev,
-}
-
-// One face prediction together with everything needed to reproduce it offline.
-//
-// `Window` is an independent deep copy of the exact frames that were converted into the
-// input tensor, so a consumer can log it and later replay it through the same ONNX graph
-// outside Unity. Holding a reference into the live ring buffer would not work: its arrays
-// are recycled on every poll, so the contents would have moved on by the time they were
-// written out.
-public readonly struct FacePrediction
-{
-    // Highest scoring class.
-    public readonly Emotion Emotion;
-
-    // Score of `Emotion`. A probability, provided the model was prepared without an
-    // extra softmax (see `Utils.PrepareModel`).
-    public readonly float Confidence;
-
-    // All model outputs, in `Emotion` enum order:
-    // Anger, Disgust, Fear, Happiness, Neutral, Sadness, Surprise.
-    public readonly float[] Scores;
-
-    // The input window, oldest frame first: [frames][features].
-    public readonly float[][] Window;
-
-    // The backend's own answers before they are divided by their sum, for a backend that
-    // answers each emotion separately (Jev). Null for the local model.
-    public readonly float[] Raw;
-
-    // Ring buffer generation after the window was captured. The difference between two
-    // consecutive predictions is the number of valid frames that arrived in between, so
-    // a smaller-than-expected step means face tracking dropped out.
-    public readonly long Generation;
-
-    internal FacePrediction(Emotion emotion, float confidence, float[] scores, float[][] window, long generation,
-                            float[] raw = null)
-    {
-        Emotion = emotion;
-        Confidence = confidence;
-        Scores = scores;
-        Window = window;
-        Generation = generation;
-        Raw = raw;
-    }
-
-    public float ScoreOf(Emotion emotion) => (Raw ?? Scores)[(int)emotion];
-}
-
-// The face emotion predictor, using one acted-data model.
-//
-// Model input, as the model was trained:
-//   - 70 values per frame: the Meta face-tracking weights of `OVRFaceExpressions`, in its
-//     `FaceExpression` order (BrowLowererL ... TongueRetreat), each 0 to 1;
-//   - raw values, no scaling or normalisation;
-//   - a window of 5 consecutive frames, oldest first, read at 10 Hz;
-//   - frames where face tracking is not valid are dropped, never filled with zeros.
-// Model output: 7 probabilities in `Emotion` order: Anger, Disgust, Fear, Happiness,
-// Neutral, Sadness, Surprise.
 [RequireComponent(typeof(OVRFaceExpressions))]
 [RequireComponent(typeof(DeviceManager))]
 public class NewFaceAuModel : MonoBehaviour
 {
-    public const int WindowFrames = 5;
-    public const int FeaturesPerFrame = 70;
-
-    // How long to wait for a full window of *valid* frames before giving up. At 10 Hz a
-    // window needs 0.5 s, so this allows for a few seconds of lost tracking before the
-    // caller is told the prediction could not be made.
+    public const int WindowFrames = SparseVrBackend.WindowFrames;
+    public const int FeaturesPerFrame = SparseVrBackend.FeaturesPerFrame;
     public const float DefaultTimeoutSeconds = 3f;
 
-    // The default model: acted data only, with volume augmentation and EmojiHero.
     public const string DefaultModelPath =
         "Packages/com.vcu-swim-lab.vr-emotion-detection/Runtime/Models/" +
         "sparseVR_teacher_model_acted_only_vol-aug-k1_with-EmojiHero.onnx";
+
+    private const string CalibrationOffMessage =
+        "calibration is off: tick \"Use Calibration\" on the predictor, or set UseCalibration = true";
+
+    private static readonly string[] ClassNames = Enum.GetNames(typeof(Emotion));
 
     [SerializeField]
     private ModelAsset faceModel;
 
     [Tooltip("Adapt the predictions to each player with movement calibration. Off by default: " +
-             "the model's own answer is used and the calibration methods do nothing. When on, " +
+             "the backend's own answer is used and the calibration methods do nothing. When on, " +
              "the game runs the calibration (CalibrateEmotion for each emotion, or " +
              "LoadCalibration for a saved one) and Predict uses it.")]
     [SerializeField]
@@ -103,25 +38,7 @@ public class NewFaceAuModel : MonoBehaviour
     [SerializeField]
     private bool saveResults = true;
 
-    [Tooltip("LocalModel runs the bundled ONNX model on the device. Jev asks Typesafe's Jev model over " +
-             "the network and needs your own API key. Calibration collects its samples with the " +
-             "selected backend, so a calibration is tied to the backend it was made with.")]
-    [SerializeField]
-    private PredictionBackend backend = PredictionBackend.LocalModel;
-
-    [Tooltip("Create it with Create > VR Emotion > Jev Settings. Only used when the backend is Jev. " +
-             "Leave it empty to use the defaults with the TYPESAFE_API_KEY environment variable.")]
-    [SerializeField]
-    private JevSettings jevSettings;
-
-    private string jevError;
-    private string lastJevWarning;
-    private bool jevProfileSent;
-    private JevSettings defaultJevSettings;
-
 #if UNITY_EDITOR
-    // Unity calls this when the component is added, so the default model is assigned
-    // without searching for it.
     void Reset()
     {
         if (faceModel == null)
@@ -131,467 +48,234 @@ public class NewFaceAuModel : MonoBehaviour
     }
 #endif
 
-    private Model faceModelObject;
-    private Worker faceWorker;
+    private readonly CalibrationStore calibrationStore = new CalibrationStore();
+    private readonly ResultsRecorder results = new ResultsRecorder();
 
-    private RingBuffer<float[]> inputBuffer;
+    private FaceWindowSource windowSource;
+    private SparseVrBackend sparseVr;
+    private IEmotionBackend backend;
+    private MovementCalibrator calibrator;
+    private string calibrationBackendId;
+    private MovementCalibrator referenceSource;
+    private CalibrationProfile referenceProfile;
+    private string calibrationError;
+    private PredictionError? lastError;
+    private string lastLoggedError;
+    private bool started;
+    private bool busy;
 
-    // Name of the bound model asset, for session metadata.
+    public event Action<PredictionError> PredictionFailed;
+
     public string FaceModelName => faceModel != null ? faceModel.name : null;
 
-    public PredictionBackend Backend
-    {
-        get => backend;
-        set
-        {
-            if (value == backend)
-            {
-                return;
-            }
+    public string ActiveBackendId => backend?.Id;
 
-            backend = value;
-            ClearCalibration();
-        }
-    }
+    private string CurrentBackendId => backend != null ? backend.Id : faceModel != null ? faceModel.name : null;
 
-    public JevSettings JevSettings
-    {
-        get => jevSettings;
-        set => jevSettings = value;
-    }
+    public PredictionError? LastError => lastError;
 
-    public string JevError => jevError;
-
-    public bool JevProfileSent => jevProfileSent;
-
-    public string JevPreflight() => JevClient.Preflight(ActiveJevSettings);
-
-    private JevSettings ActiveJevSettings
-    {
-        get
-        {
-            if (jevSettings != null)
-            {
-                return jevSettings;
-            }
-
-            if (defaultJevSettings == null)
-            {
-                defaultJevSettings = ScriptableObject.CreateInstance<JevSettings>();
-            }
-
-            return defaultJevSettings;
-        }
-    }
-
-    public void Start()
-    {
-        Debug.Assert(faceModel != null, $"Face model not assigned in ${GetType().Name}");
-
-        if (backend == PredictionBackend.Jev)
-        {
-            WarnJevOnce(JevPreflight());
-        }
-
-        // The face graphs already end in a Softmax node; appending another would leave
-        // `Confidence` as something that is not a probability.
-        faceModelObject = Utils.PrepareModel(faceModel, appendSoftmax: false);
-        faceWorker = new Worker(faceModelObject, BackendType.GPUCompute);
-
-        var deviceManager = GetComponent<DeviceManager>();
-
-        var auDevice = deviceManager.Require(InputType.FaceAU);
-        if (auDevice == null)
-        {
-            Debug.LogError("Could not create action units device!");
-        }
-
-        inputBuffer = new(WindowFrames, () => new float[FeaturesPerFrame]);
-        inputBuffer.Listen(auDevice);
-
-        Debug.Log("NewFaceAuModel initialized.");
-    }
-
-    async Awaitable<Tensor<float>> Infer(Tensor<float> input)
-    {
-        faceWorker.Schedule(input);
-        return await faceWorker.PeekOutput().ReadbackAndCloneAsync() as Tensor<float>;
-    }
-
-    // Wait until the ring buffer holds a full window of valid frames, then take an
-    // independent copy of it. Returns null if the window could not be filled in time,
-    // which in practice means face tracking was lost or never started.
-    private async Awaitable<float[][]> AwaitWindow(float timeoutSeconds)
-    {
-        inputBuffer.Clear();
-
-        float deadline = Time.realtimeSinceStartup + timeoutSeconds;
-
-        while (!inputBuffer.Full)
-        {
-            if (Time.realtimeSinceStartup >= deadline)
-            {
-                Debug.LogWarning(
-                    $"{nameof(NewFaceAuModel)}: timed out after {timeoutSeconds:F1}s waiting for " +
-                    $"{WindowFrames} valid face frames. Face tracking is probably unavailable.");
-                return null;
-            }
-
-            await Awaitable.NextFrameAsync();
-        }
-
-        return inputBuffer.Snapshot();
-    }
-
-    // TODO: `Predict` that doesn't wait on new data, just uses whatever is in the buffer.
-
-    public async Awaitable<Tensor<float>> PredictRaw()
-    {
-        var window = await AwaitWindow(DefaultTimeoutSeconds);
-        if (window == null)
-        {
-            return null;
-        }
-
-        using var input = window.ToTensor();
-        return await Infer(input);
-    }
-
-    // Full prediction result, including the exact input window. Returns null when a
-    // window of valid frames could not be collected before the timeout.
-    // `saveResult`: false keeps this prediction out of the results file, e.g. for a sample
-    // that is only collected for calibration.
-    public async Awaitable<FacePrediction?> PredictDetailed(float timeoutSeconds = DefaultTimeoutSeconds,
-                                                            bool saveResult = true)
-    {
-        var prediction = await PredictUnrecorded(timeoutSeconds);
-        if (saveResult)
-        {
-            RecordResult(prediction);
-        }
-
-        return prediction;
-    }
-
-    // A prediction that is not saved to the results file; calibration samples use it.
-    private async Awaitable<FacePrediction?> PredictUnrecorded(float timeoutSeconds)
-    {
-        jevError = null;
-
-        var window = await AwaitWindow(timeoutSeconds);
-        if (window == null)
-        {
-            return null;
-        }
-
-        long generation = inputBuffer.Generation;
-
-        var (scores, raw) = backend == PredictionBackend.Jev ? await ScoreWithJevSet(window) : await ScoreWithModel(window);
-        if (scores == null)
-        {
-            return null;
-        }
-
-        int best = Utils.Argmax(scores);
-        return new FacePrediction((Emotion)best, (raw ?? scores)[best], scores, window, generation, raw);
-    }
-
-    private async Awaitable<(float[] scores, float[] raw)> ScoreWithModel(float[][] window)
-    {
-        using var input = window.ToTensor();
-        using var output = await Infer(input);
-        return (output.DownloadToArray(), null);
-    }
-
-    private async Awaitable<(float[] scores, float[] raw)> ScoreWithJevSet(float[][] window)
-    {
-        var result = await ClassifyWithJev(window);
-        return (result.Scores, result.Raw);
-    }
-
-    public async Awaitable<float[]> ScoreWithJev(float[][] window)
-    {
-        var result = await ClassifyWithJev(window);
-        return result.Scores;
-    }
-
-    public async Awaitable<JevResult> ClassifyWithJev(float[][] window, bool requireProfile = false)
-    {
-        JevResult result;
-        if (requireProfile && !IsCalibrated)
-        {
-            result = JevResult.Failure("calibration is required but no calibration is ready, so calibrated Jev cannot answer");
-        }
-        else
-        {
-            var profile = ActiveJevSettings.SendOwnFacesInRequest && useCalibration ? calibrator?.ExportProfile() : null;
-            try
-            {
-                result = await JevClient.Classify(ActiveJevSettings, window, profile);
-            }
-            catch (Exception e)
-            {
-                result = JevResult.Failure($"{e.GetType().Name}: {e.Message}");
-            }
-        }
-
-        jevError = result.Error;
-        jevProfileSent = result.ProfileSent;
-        WarnJevOnce(result.Error);
-        return result;
-    }
-
-    private void WarnJevOnce(string error)
-    {
-        if (error == lastJevWarning)
-        {
-            return;
-        }
-
-        lastJevWarning = error;
-        if (error != null)
-        {
-            Debug.LogWarning($"{nameof(NewFaceAuModel)}: Jev did not answer ({error}).");
-        }
-    }
-
-    // Uses movement calibration when it is ready (see `CalibrateEmotion`), and the model's own
-    // answer otherwise. The returned confidence is always the model's probability for the
-    // returned emotion; with the Jev backend it is Jev's own answer for that emotion.
-    public async Awaitable<(Emotion, float)> Predict()
-    {
-        var prediction = await PredictDetailed();
-        if (prediction == null)
-        {
-            // Preserve the existing signature: callers that cannot express "no reading"
-            // fall back to Neutral with zero confidence.
-            return (Emotion.Neutral, 0f);
-        }
-
-        var emotion = CalibratedEmotion(prediction.Value) ?? prediction.Value.Emotion;
-        return (emotion, prediction.Value.ScoreOf(emotion));
-    }
-
-    // ---- Movement calibration (optional) -------------------------------------------------
-    //
-    // Learns how this player makes each emotion, then `Predict` uses it. Without it, nothing
-    // changes. Typical use:
-    //
-    //     predictor.StartCalibration();
-    //     foreach (Emotion e in Enum.GetValues(typeof(Emotion)))
-    //     {
-    //         // show "make a <e> face" first
-    //         await predictor.CalibrateEmotion(e);
-    //     }
-    //     if (!predictor.FinishCalibration()) Debug.LogWarning(predictor.CalibrationError);
-
-    private MovementCalibrator calibrator;
-    private string loadError;
-
-    private const string CalibrationOffMessage =
-        "calibration is off: tick \"Use Calibration\" on the predictor, or set UseCalibration = true";
-
-    // The "Use Calibration" checkbox. Off (the default): the model's own answer is used and the
-    // calibration methods do nothing. Games read it to decide whether to run a calibration step.
     public bool UseCalibration
     {
         get => useCalibration;
         set => useCalibration = value;
     }
 
-    // True when `Predict` is using movement calibration.
     public bool IsCalibrated => useCalibration && calibrator != null && calibrator.IsReady;
 
-    // Why calibration or loading failed; empty or null when nothing failed.
-    public string CalibrationError => loadError ?? calibrator?.Error;
+    public string CalibrationError => calibrationError ?? calibrator?.Error;
 
-    // Start a new calibration, forgetting any previous one. Does nothing when calibration is off.
+    public string ResultsFilePath => results.FilePath;
+
+    public static string ResultsFolder => ResultsRecorder.Folder;
+
+    public void Start()
+    {
+        if (started)
+        {
+            return;
+        }
+
+        started = true;
+        Initialise();
+    }
+
+    void OnEnable()
+    {
+        if (started)
+        {
+            Initialise();
+        }
+    }
+
+    void OnDisable()
+    {
+        windowSource?.Dispose();
+        windowSource = null;
+
+        if (sparseVr != null)
+        {
+            if (ReferenceEquals(backend, sparseVr))
+            {
+                backend = null;
+            }
+
+            sparseVr.Dispose();
+            sparseVr = null;
+        }
+
+        results.Close();
+    }
+
+    void OnDestroy()
+    {
+        if (backend != null && !ReferenceEquals(backend, sparseVr))
+        {
+            backend.Dispose();
+        }
+
+        backend = null;
+        results.Dispose();
+    }
+
+    void OnApplicationPause(bool paused)
+    {
+        if (paused)
+        {
+            results.Close();
+        }
+    }
+
+    public void UseSparseVr()
+    {
+        if (faceModel == null)
+        {
+            throw new InvalidOperationException("assign a face model asset to use the SparseVr backend");
+        }
+
+        if (sparseVr == null)
+        {
+            sparseVr = new SparseVrBackend(faceModel);
+        }
+
+        Activate(sparseVr);
+    }
+
+    public void UseJev(JevOptions options)
+    {
+        Activate(CreateJevBackend(options));
+    }
+
+    public IEmotionBackend CreateJevBackend(JevOptions options)
+    {
+        if (options == null)
+        {
+            throw new ArgumentNullException(nameof(options));
+        }
+
+        return new JevBackend(options, FaceAuNames.Movement);
+    }
+
+    public void UseBackend(IEmotionBackend newBackend)
+    {
+        if (newBackend == null)
+        {
+            throw new ArgumentNullException(nameof(newBackend));
+        }
+
+        Activate(newBackend);
+    }
+
+    public async Awaitable<PredictionOutcome> TryPredict(float timeoutSeconds = DefaultTimeoutSeconds,
+                                                         bool saveResult = true)
+    {
+        var outcome = await PredictCore(timeoutSeconds);
+        if (saveResult)
+        {
+            RecordResult(outcome);
+        }
+
+        return outcome;
+    }
+
+    public async Awaitable<FacePrediction?> PredictDetailed(float timeoutSeconds = DefaultTimeoutSeconds,
+                                                            bool saveResult = true)
+    {
+        var outcome = await TryPredict(timeoutSeconds, saveResult);
+        return outcome.PredictionOrNull;
+    }
+
+    public async Awaitable<(Emotion, float)> Predict()
+    {
+        var outcome = await TryPredict();
+        if (!outcome.Ok)
+        {
+            return (Emotion.Neutral, 0f);
+        }
+
+        var emotion = CalibratedEmotion(outcome.Prediction) ?? outcome.Prediction.Emotion;
+        return (emotion, outcome.Prediction.ScoreOf(emotion));
+    }
+
+    public async Awaitable<Tensor<float>> PredictRaw()
+    {
+        if (!started || windowSource == null || sparseVr == null || busy)
+        {
+            return null;
+        }
+
+        busy = true;
+        try
+        {
+            var window = await windowSource.AwaitWindowAsync(DefaultTimeoutSeconds);
+            return window == null ? null : await sparseVr.ScoreRawAsync(window);
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    public async Awaitable<BackendResult> ScoreWith(IEmotionBackend other, float[][] window)
+    {
+        if (other == null)
+        {
+            throw new ArgumentNullException(nameof(other));
+        }
+
+        try
+        {
+            return await other.ScoreAsync(new BackendRequest(window, ClassNames, ReferenceProfile()));
+        }
+        catch (Exception e)
+        {
+            return BackendResult.Failure(PredictionErrorCode.Internal, $"{e.GetType().Name}: {e.Message}", other.Id);
+        }
+    }
+
     public void StartCalibration()
     {
         calibrator = null;
-        loadError = null;
+        calibrationBackendId = null;
+        calibrationError = null;
 
         if (!useCalibration)
         {
-            loadError = CalibrationOffMessage;
+            calibrationError = CalibrationOffMessage;
             Debug.LogWarning($"{nameof(NewFaceAuModel)}: {CalibrationOffMessage}");
             return;
         }
 
-        calibrator = new MovementCalibrator(Enum.GetNames(typeof(Emotion)));
+        calibrator = new MovementCalibrator(ClassNames);
+        calibrationBackendId = CurrentBackendId;
     }
 
-    // Stop using calibration; `Predict` goes back to the model's own answer. Saved
-    // calibrations on disk are kept; see `DeleteSavedCalibration`.
     public void ClearCalibration()
     {
-        loadError = null;
+        calibrationError = null;
         calibrator = null;
+        calibrationBackendId = null;
     }
 
-    // ---- Saving calibration per user ------------------------------------------------------
-    //
-    // A calibration describes one person's face. It is saved on this device only, under
-    // Application.persistentDataPath/VREmotionDetection/calibration/<userId>.json -- never in
-    // the model asset. It is tied to the model it was made with.
-
-    [Serializable]
-    private class SavedCalibration
-    {
-        public string implementationVersion;
-        public string faceModel;
-        public string savedUtc;
-        public string[] classNames;
-        public int scoreWidth;
-        public double[] scoreCentroids;
-        public int movementWidth;
-        public double[] movementCentroids;
-    }
-
-    internal static string CalibrationModelId(PredictionBackend backend, string faceModelName, string jevModel)
-    {
-        return backend == PredictionBackend.Jev ? $"jev:{jevModel}" : faceModelName;
-    }
-
-    private string CalibrationModel => CalibrationModelId(
-        backend, FaceModelName, backend == PredictionBackend.Jev ? ActiveJevSettings.Model : null);
-
-    private float[] CalibrationScores(float[] scores)
-    {
-        return backend == PredictionBackend.Jev ? JevScores.ForCalibration(scores) : scores;
-    }
-
-    // Where a user's calibration is saved. `userId`: letters, digits, '-' and '_' only.
-    public static string CalibrationPath(string userId)
-    {
-        if (string.IsNullOrEmpty(userId) || !System.Text.RegularExpressions.Regex.IsMatch(userId, "^[A-Za-z0-9_-]+$"))
-        {
-            throw new ArgumentException("userId may contain only letters, digits, '-' and '_'", nameof(userId));
-        }
-
-        return System.IO.Path.Combine(Application.persistentDataPath, "VREmotionDetection", "calibration",
-                                      userId + ".json");
-    }
-
-    public bool HasSavedCalibration(string userId) => System.IO.File.Exists(CalibrationPath(userId));
-
-    // Save the current calibration for this user. False when there is no finished calibration.
-    public bool SaveCalibration(string userId)
-    {
-        var profile = calibrator?.ExportProfile();
-        if (profile == null)
-        {
-            return false;
-        }
-
-        var saved = new SavedCalibration
-        {
-            implementationVersion = profile.ImplementationVersion,
-            faceModel = CalibrationModel,
-            savedUtc = DateTime.UtcNow.ToString("o"),
-            classNames = profile.ClassNames,
-            scoreWidth = profile.ScoreCentroids[0].Length,
-            scoreCentroids = Flatten(profile.ScoreCentroids),
-            movementWidth = profile.MovementCentroids[0].Length,
-            movementCentroids = Flatten(profile.MovementCentroids),
-        };
-
-        string path = CalibrationPath(userId);
-        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
-        System.IO.File.WriteAllText(path, JsonUtility.ToJson(saved));
-        return true;
-    }
-
-    // Load and use this user's saved calibration. False, with `CalibrationError` set, when
-    // there is none, or it was made with another model, or it is damaged; `Predict` then
-    // keeps the model's own answer.
-    public bool LoadCalibration(string userId)
-    {
-        calibrator = null;
-        loadError = null;
-
-        if (!useCalibration)
-        {
-            loadError = CalibrationOffMessage;
-            return false;
-        }
-
-        string path = CalibrationPath(userId);
-        if (!System.IO.File.Exists(path))
-        {
-            loadError = $"no saved calibration for '{userId}'";
-            return false;
-        }
-
-        SavedCalibration saved;
-        try
-        {
-            saved = JsonUtility.FromJson<SavedCalibration>(System.IO.File.ReadAllText(path));
-        }
-        catch (Exception e)
-        {
-            loadError = $"the saved calibration for '{userId}' could not be read: {e.Message}";
-            return false;
-        }
-
-        if (saved == null || saved.faceModel != CalibrationModel)
-        {
-            loadError = $"the saved calibration for '{userId}' was made with model " +
-                        $"'{saved?.faceModel}', not '{CalibrationModel}'; calibrate again";
-            return false;
-        }
-
-        var profile = new CalibrationProfile(saved.implementationVersion, saved.classNames,
-                                             Unflatten(saved.scoreCentroids, saved.scoreWidth),
-                                             Unflatten(saved.movementCentroids, saved.movementWidth));
-
-        calibrator = MovementCalibrator.FromProfile(profile, Enum.GetNames(typeof(Emotion)), out string error);
-        if (calibrator == null)
-        {
-            loadError = $"the saved calibration for '{userId}' cannot be used: {error}";
-            return false;
-        }
-
-        return true;
-    }
-
-    // Delete this user's saved calibration from the device.
-    public void DeleteSavedCalibration(string userId)
-    {
-        string path = CalibrationPath(userId);
-        if (System.IO.File.Exists(path))
-        {
-            System.IO.File.Delete(path);
-        }
-    }
-
-    private static double[] Flatten(double[][] matrix)
-    {
-        int width = matrix[0].Length;
-        var flat = new double[matrix.Length * width];
-        for (int r = 0; r < matrix.Length; ++r) Array.Copy(matrix[r], 0, flat, r * width, width);
-        return flat;
-    }
-
-    private static double[][] Unflatten(double[] flat, int width)
-    {
-        if (flat == null || width <= 0 || flat.Length % width != 0) return null;
-
-        var matrix = new double[flat.Length / width][];
-        for (int r = 0; r < matrix.Length; ++r)
-        {
-            matrix[r] = new double[width];
-            Array.Copy(flat, r * width, matrix[r], 0, width);
-        }
-
-        return matrix;
-    }
-
-    // Collect one emotion while the player makes that face. Takes one sample per
-    // `secondsBetweenSamples`; the first is dropped while the face is still changing, so
-    // with the default it lasts about ten seconds. Samples without face tracking are retried.
-    // Returns false when `maxAttempts` samples did not give a complete emotion, and at once
-    // when calibration is off.
     public async Awaitable<bool> CalibrateEmotion(Emotion emotion, float secondsBetweenSamples = 1f,
                                                   int maxAttempts = 20)
     {
@@ -605,9 +289,21 @@ public class NewFaceAuModel : MonoBehaviour
             throw new InvalidOperationException("call StartCalibration before CalibrateEmotion");
         }
 
-        calibrator.BeginEmotion((int)emotion);
+        if (secondsBetweenSamples < 0f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(secondsBetweenSamples), secondsBetweenSamples, "must be 0 or more");
+        }
 
-        for (int attempt = 0; !calibrator.IsEmotionComplete((int)emotion); ++attempt)
+        if (maxAttempts < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxAttempts), maxAttempts, "must be 1 or more");
+        }
+
+        var session = calibrator;
+        var calibratingBackend = backend;
+        session.BeginEmotion((int)emotion);
+
+        for (int attempt = 0; !session.IsEmotionComplete((int)emotion); ++attempt)
         {
             if (attempt >= maxAttempts)
             {
@@ -616,10 +312,15 @@ public class NewFaceAuModel : MonoBehaviour
 
             float nextSample = Time.time + secondsBetweenSamples;
 
-            var prediction = await PredictUnrecorded(DefaultTimeoutSeconds);
-            if (prediction.HasValue)
+            var outcome = await PredictCore(DefaultTimeoutSeconds);
+            if (!ReferenceEquals(session, calibrator) || !ReferenceEquals(calibratingBackend, backend))
             {
-                calibrator.Observe(CalibrationScores(prediction.Value.Scores), prediction.Value.Window);
+                return false;
+            }
+
+            if (outcome.Ok)
+            {
+                session.Observe(CalibrationScores(outcome.Prediction), outcome.Prediction.Window);
             }
 
             float remaining = nextSample - Time.time;
@@ -632,24 +333,43 @@ public class NewFaceAuModel : MonoBehaviour
         return true;
     }
 
-    // Build the calibration once every emotion is collected. Returns false, with
-    // `CalibrationError` set, if it could not be built; `Predict` then stays uncalibrated.
+    public async Awaitable<bool> CalibrateAll(Func<Emotion, Awaitable> prompt = null,
+                                              float secondsBetweenSamples = 1f, int maxAttempts = 20)
+    {
+        StartCalibration();
+        if (!useCalibration)
+        {
+            return false;
+        }
+
+        foreach (Emotion emotion in Enum.GetValues(typeof(Emotion)))
+        {
+            if (prompt != null)
+            {
+                await prompt(emotion);
+            }
+
+            if (!await CalibrateEmotion(emotion, secondsBetweenSamples, maxAttempts))
+            {
+                return false;
+            }
+        }
+
+        return FinishCalibration();
+    }
+
     public bool FinishCalibration()
     {
         return calibrator != null && calibrator.Finish();
     }
 
-    // ---- Calibration on a fixed clock (advanced) --------------------------------------------
-    //
-    // For callers that take their own predictions on a fixed clock, as a study protocol does,
-    // instead of `CalibrateEmotion`: after `StartCalibration`, call `BeginCalibrationEmotion`
-    // when the prompt appears, then `AddCalibrationSample` once per tick with the tick's
-    // position (0, 1, 2, ...). Position 0 is dropped, and a tick without tracking stays
-    // missing -- it is not retried -- so each emotion needs ticks 1 to 9 tracked. Finish with
-    // `FinishCalibration` as usual.
-
     public void BeginCalibrationEmotion(Emotion emotion)
     {
+        if (!useCalibration)
+        {
+            return;
+        }
+
         if (calibrator == null)
         {
             throw new InvalidOperationException("call StartCalibration before BeginCalibrationEmotion");
@@ -658,23 +378,24 @@ public class NewFaceAuModel : MonoBehaviour
         calibrator.BeginEmotion((int)emotion);
     }
 
-    // True when the sample was kept. `prediction` null means the tick had no face tracking.
     public bool AddCalibrationSample(int position, FacePrediction? prediction)
     {
+        if (!useCalibration)
+        {
+            return false;
+        }
+
         if (calibrator == null)
         {
             throw new InvalidOperationException("call StartCalibration before AddCalibrationSample");
         }
 
-        return calibrator.ObserveAt(position, CalibrationScores(prediction?.Scores), prediction?.Window);
+        float[] scores = prediction.HasValue ? CalibrationScores(prediction.Value) : null;
+        return calibrator.ObserveAt(position, scores, prediction?.Window);
     }
 
-    // Samples kept so far per emotion, in Emotion order; null when no calibration was started.
     public int[] CalibrationSampleCounts() => calibrator?.KeptSampleCounts();
 
-    // The full calibrated decision for a prediction -- the emotion's index in Emotion order, and
-    // the similarity sums of the winner and runner-up -- or null when calibration is off or not
-    // ready. `CalibratedEmotion` is the same decision as an Emotion.
     public NearestCentroid? CalibratedDecision(FacePrediction prediction)
     {
         if (!useCalibration)
@@ -682,36 +403,78 @@ public class NewFaceAuModel : MonoBehaviour
             return null;
         }
 
-        return calibrator?.Classify(CalibrationScores(prediction.Scores), prediction.Window);
+        float[] scores = CalibrationScores(prediction);
+        return scores == null ? null : calibrator?.Classify(scores, prediction.Window);
     }
 
-    // The calibrated emotion for a prediction from `PredictDetailed`, or null when
-    // calibration is off or not ready.
     public Emotion? CalibratedEmotion(FacePrediction prediction)
     {
         var decision = CalibratedDecision(prediction);
         return decision.HasValue ? (Emotion)decision.Value.ClassIndex : (Emotion?)null;
     }
 
+    public static string CalibrationPath(string userId) => CalibrationStore.DefaultPathFor(userId);
 
-    // ---- Results ---------------------------------------------------------------------------
-    //
-    // With `saveResults` on (the default), every prediction is saved to one CSV file per
-    // session on the device: time, emotion, confidence, calibrated or not, and the model's own
-    // emotion. Calibration samples are not saved. Raw face-tracking values are never saved.
+    public bool HasSavedCalibration(string userId) => calibrationStore.Exists(userId);
 
-    private readonly ResultsRecorder results = new();
+    public bool SaveCalibration(string userId)
+    {
+        var profile = calibrator?.ExportProfile();
+        string backendId = CurrentBackendId;
+        if (profile == null || backendId == null)
+        {
+            return false;
+        }
 
-    // A short text summary of this session, e.g. to show the player at the end.
+        if (!calibrationStore.TrySave(userId, backendId, profile, out string error))
+        {
+            calibrationError = error;
+            return false;
+        }
+
+        return true;
+    }
+
+    public bool LoadCalibration(string userId)
+    {
+        calibrator = null;
+        calibrationBackendId = null;
+        calibrationError = null;
+
+        if (!useCalibration)
+        {
+            calibrationError = CalibrationOffMessage;
+            return false;
+        }
+
+        string backendId = CurrentBackendId;
+        if (backendId == null)
+        {
+            calibrationError = "no backend is selected, so a saved calibration cannot be matched to it";
+            return false;
+        }
+
+        if (!calibrationStore.TryLoad(userId, backendId, out CalibrationProfile profile, out string error))
+        {
+            calibrationError = error;
+            return false;
+        }
+
+        calibrator = MovementCalibrator.FromProfile(profile, ClassNames, out error);
+        if (calibrator == null)
+        {
+            calibrationError = $"the saved calibration for '{userId}' cannot be used: {error}";
+            return false;
+        }
+
+        calibrationBackendId = backendId;
+        return true;
+    }
+
+    public void DeleteSavedCalibration(string userId) => calibrationStore.Delete(userId);
+
     public string GetResultsSummary() => results.Summary();
 
-    // This session's results file, or null before the first saved prediction.
-    public string ResultsFilePath => results.FilePath;
-
-    // Where all sessions' results files are saved on this device.
-    public static string ResultsFolder => ResultsRecorder.Folder;
-
-    // Delete every saved results file on this device, e.g. when a player asks for it.
     public static void DeleteSavedResults()
     {
         if (System.IO.Directory.Exists(ResultsFolder))
@@ -720,51 +483,207 @@ public class NewFaceAuModel : MonoBehaviour
         }
     }
 
-    private void RecordResult(FacePrediction? prediction)
+    private void Initialise()
+    {
+        var manager = GetComponent<DeviceManager>();
+        if (manager == null)
+        {
+            throw new InvalidOperationException($"{nameof(NewFaceAuModel)} needs a {nameof(DeviceManager)} on the same GameObject");
+        }
+
+        windowSource = new FaceWindowSource(manager.Require(InputType.FaceAU), WindowFrames, FeaturesPerFrame);
+
+        if (backend != null)
+        {
+            return;
+        }
+
+        if (faceModel != null)
+        {
+            UseSparseVr();
+        }
+        else
+        {
+            Debug.LogWarning($"{nameof(NewFaceAuModel)}: no face model is assigned. Assign one, or call UseJev or UseBackend before the first prediction.");
+        }
+    }
+
+    private void Activate(IEmotionBackend next)
+    {
+        if (ReferenceEquals(next, backend))
+        {
+            return;
+        }
+
+        var previous = backend;
+        backend = next;
+        if (calibrationBackendId != next.Id)
+        {
+            ClearCalibration();
+        }
+
+        lastError = null;
+        lastLoggedError = null;
+
+        if (previous != null && !ReferenceEquals(previous, sparseVr))
+        {
+            previous.Dispose();
+        }
+    }
+
+    private CalibrationProfile ReferenceProfile()
+    {
+        if (!useCalibration || calibrator == null || !calibrator.IsReady)
+        {
+            return null;
+        }
+
+        if (!ReferenceEquals(referenceSource, calibrator))
+        {
+            referenceProfile = calibrator.ExportProfile();
+            referenceSource = calibrator;
+        }
+
+        return referenceProfile;
+    }
+
+    private float[] CalibrationScores(FacePrediction prediction)
+    {
+        return backend != null && backend.Id == prediction.BackendId
+            ? backend.PrepareForCalibration(prediction.Scores)
+            : null;
+    }
+
+    private async Awaitable<PredictionOutcome> PredictCore(float timeoutSeconds)
+    {
+        if (!(timeoutSeconds > 0f))
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeoutSeconds), timeoutSeconds, "must be above 0");
+        }
+
+        if (!started || windowSource == null)
+        {
+            await Awaitable.NextFrameAsync();
+            if (!started || windowSource == null)
+            {
+                return Fail(PredictionErrorCode.NotReady, "the predictor has not started; add it to an active GameObject first", null);
+            }
+        }
+
+        var active = backend;
+
+        if (active == null)
+        {
+            await Awaitable.NextFrameAsync();
+            return Fail(PredictionErrorCode.NotConfigured,
+                        "no backend is selected: assign a face model, or call UseJev or UseBackend", null);
+        }
+
+        if (busy)
+        {
+            await Awaitable.NextFrameAsync();
+            return Fail(PredictionErrorCode.Busy, "another prediction is already running", active.Id);
+        }
+
+        busy = true;
+        try
+        {
+            var window = await windowSource.AwaitWindowAsync(timeoutSeconds);
+            if (window == null)
+            {
+                return Fail(PredictionErrorCode.NoTracking,
+                            $"timed out after {timeoutSeconds:F1}s waiting for {WindowFrames} valid face frames; " +
+                            "face tracking is probably unavailable", active.Id);
+            }
+
+            long generation = windowSource.Generation;
+
+            BackendResult result;
+            try
+            {
+                result = await active.ScoreAsync(new BackendRequest(window, ClassNames, ReferenceProfile()));
+            }
+            catch (Exception e)
+            {
+                return Fail(PredictionErrorCode.Internal, $"{e.GetType().Name}: {e.Message}", active.Id);
+            }
+
+            if (!result.Ok)
+            {
+                return result.Error.HasValue
+                    ? Report(PredictionOutcome.Failure(result.Error.Value))
+                    : Fail(PredictionErrorCode.InvalidResponse, "the backend returned neither scores nor an error", active.Id);
+            }
+
+            if (!ScoreValidation.TryValidate(result.Scores, ClassNames.Length, out string problem))
+            {
+                return Fail(PredictionErrorCode.InvalidResponse, problem, active.Id);
+            }
+
+            int best = ScoreValidation.Argmax(result.Scores);
+            float confidence = (result.Raw ?? result.Scores)[best];
+            var prediction = new FacePrediction((Emotion)best, confidence, result.Scores, window, generation,
+                                                result.Raw, active.Id);
+            return Report(PredictionOutcome.Success(prediction));
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+
+    private PredictionOutcome Fail(PredictionErrorCode code, string message, string backendId)
+    {
+        return Report(PredictionOutcome.Failure(new PredictionError(code, message, backendId)));
+    }
+
+    private PredictionOutcome Report(PredictionOutcome outcome)
+    {
+        if (outcome.Ok)
+        {
+            lastError = null;
+            lastLoggedError = null;
+            return outcome;
+        }
+
+        var error = outcome.Error.Value;
+        lastError = error;
+
+        string text = error.ToString();
+        if (text != lastLoggedError)
+        {
+            lastLoggedError = text;
+            Debug.LogWarning($"{nameof(NewFaceAuModel)}: {text}");
+        }
+
+        try
+        {
+            PredictionFailed?.Invoke(error);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"{nameof(NewFaceAuModel)}: a PredictionFailed handler threw ({e.GetType().Name}: {e.Message}).");
+        }
+
+        return outcome;
+    }
+
+    private void RecordResult(PredictionOutcome outcome)
     {
         if (!saveResults)
         {
             return;
         }
 
-        if (prediction == null)
+        if (!outcome.Ok)
         {
-            if (jevError != null)
-            {
-                results.RecordJevError();
-            }
-            else
-            {
-                results.RecordNoTracking();
-            }
-
+            results.RecordFailure(outcome.Error.Value.Code);
             return;
         }
 
-        var value = prediction.Value;
-        var calibrated = CalibratedEmotion(value);
-        var emotion = calibrated ?? value.Emotion;
-        results.Record(emotion, value.ScoreOf(emotion), calibrated.HasValue, value.Emotion);
-    }
-
-    // The Quest pauses rather than quits when the headset is taken off; close the file so
-    // nothing is lost. The next prediction appends to the same file.
-    void OnApplicationPause(bool paused)
-    {
-        if (paused)
-        {
-            results.Dispose();
-        }
-    }
-
-    void OnDisable()
-    {
-        faceWorker.Dispose();
-        results.Dispose();
-
-        if (defaultJevSettings != null)
-        {
-            Destroy(defaultJevSettings);
-        }
+        var prediction = outcome.Prediction;
+        var calibrated = CalibratedEmotion(prediction);
+        var emotion = calibrated ?? prediction.Emotion;
+        results.Record(emotion, prediction.ScoreOf(emotion), calibrated.HasValue, prediction.Emotion);
     }
 }

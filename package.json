@@ -23,7 +23,6 @@
     "url": "https://github.com/vcu-swim-lab/VREmotionDetection.git"
   },
   "documentationUrl": "https://github.com/vcu-swim-lab/VREmotionDetection#readme",
-  "changelogUrl": "https://github.com/vcu-swim-lab/VREmotionDetection/blob/main/CHANGELOG.md",
   "licensesUrl": "https://github.com/vcu-swim-lab/VREmotionDetection/blob/main/LICENSE",
   "dependencies": {
     "com.unity.ai.inference": "2.2.1",

@@ -1,6 +1,6 @@
 # Calibration
 
-People make the same emotion with different faces. Calibration learns how *this* player makes each emotion, then compares every prediction with the player's own faces. It is **off by default**: without it `Predict` returns the backend's own answer, and every calibration method does nothing.
+People make the same emotion with different faces. Calibration learns how *this* player makes each emotion, then compares every prediction with the player's own faces. It is **off by default**: without it `Predict` returns the backend's own answer, and the calibration methods do not calibrate: they return `false` (or nothing) and `CalibrationError` says that calibration is off.
 
 ## Using it
 
@@ -48,13 +48,13 @@ Choose the backend first, then set `UseCalibration = true`, then load or run a c
 Calibration collects and classifies with whichever backend is active. A calibration made with SparseVr is not valid for Jev and the other way round. This is enforced:
 
 - a saved calibration records the backend id, and `LoadCalibration` refuses a file made by another backend ("calibrate again");
-- `UseSparseVr`, `UseJev` and `UseBackend` clear the current calibration;
+- choosing a backend with a different `ActiveBackendId` (`UseSparseVr`, `UseJev` or `UseBackend`) clears the current calibration; choosing the same one again keeps it;
 - if the backend changes while `CalibrateEmotion` is running, it stops and returns false.
 
 ## Where it is stored
 
 A calibration describes one person's face. It is saved only on the device:
-`Application.persistentDataPath/VREmotionDetection/calibration/<userId>.json`. It is never part of a model asset or a build, and must not be committed. `userId` may contain only letters, digits, `-` and `_`, because it becomes a file name. Use `new CalibrationStore(folder)` to keep calibrations somewhere else. Writes go to a temporary file first, so a crash cannot leave a half-written calibration.
+`Application.persistentDataPath/VREmotionDetection/calibration/<userId>.json`. It is never part of a model asset or a build, and must not be committed. `userId` may contain only letters, digits, `-` and `_`, because it becomes a file name. Writes go to a temporary file first, so a crash cannot leave a half-written calibration.
 
 ## The numbers that must not change
 

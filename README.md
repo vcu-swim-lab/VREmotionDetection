@@ -135,7 +135,7 @@ public class FirstPrediction : MonoBehaviour
 }
 ```
 
-You should see something like `Happiness (0.81)` in the Console. The call takes at least half a
+You should see something like `Happiness (0.81)` in the Console. The call takes about half a
 second: it waits for five fresh readings of the face (the model reads the face ten times a second).
 
 * `emotion` is one of the seven emotions.
@@ -183,7 +183,7 @@ Things must happen in this order. The recipes in the next section are exactly th
 | Step | Call | Why this position |
 |---|---|---|
 | **1. Choose the backend** | nothing for SparseVr (default), or `UseSparseVr()`, or `UseJev(options)` | a calibration belongs to the backend that made it, so the backend comes first. Choosing a *different* backend later clears the calibration |
-| **2. Turn calibration on** *(only if you want it)* | `UseCalibration = true` | while it is off, every calibration call does nothing |
+| **2. Turn calibration on** *(only if you want it)* | `UseCalibration = true` | while it is off, the calibration calls do not calibrate and `CalibrationError` says so |
 | **3. Load a saved calibration** | `LoadCalibration(playerId)` → `bool` | skip the minute and a half of calibrating if this player already did it |
 | **4. Otherwise calibrate** | `await CalibrateAll(prompt)` → `bool` | asks the player for each of the seven faces in turn |
 | **5. Save it** | `SaveCalibration(playerId)` → `bool` | so next time step 3 succeeds |
@@ -637,7 +637,7 @@ results file.
 
 | Call | Await? | Returns | Notes |
 |---|---|---|---|
-| `UseCalibration` (property) | — | `bool`, settable | the **Use Calibration** checkbox. While `false`, the calls below do nothing |
+| `UseCalibration` (property) | — | `bool`, settable | the **Use Calibration** checkbox. While `false`, the calls below do not calibrate (`CalibrationError` says so) |
 | `IsCalibrated` | — | `bool` | `true` when `Predict` is using a calibration |
 | `CalibrationError` | — | `string` | why the last calibration, load or save failed; empty or `null` if nothing failed |
 | `CalibrateAll(Func<Emotion, Awaitable> prompt = null, float secondsBetweenSamples = 1, int maxAttempts = 20)` | yes | `bool` | calibrates all seven emotions then finishes. `true` = ready. Call it again to start over |
@@ -663,7 +663,7 @@ Calling `CalibrateEmotion`, `BeginCalibrationEmotion` or `AddCalibrationSample` 
 | `DeleteSavedCalibration(string playerId)` | `void` | |
 | `NewFaceAuModel.CalibrationPath(string playerId)` (static) | `string` | where the file lives |
 
-`playerId` may contain only letters, digits, `-` and `_` (anything else throws `ArgumentException`)
+`playerId` may contain only letters, digits, `-` and `_` (anything else makes the file lookup throw `ArgumentException`)
 because it becomes a file name.
 
 ### Results
@@ -767,10 +767,11 @@ It describes one person's face, so never put it in your project or a repository.
 work, uncalibrated. To try again call `CalibrateAll` again (it starts over).
 
 **Step by step, if you need your own flow:** `StartCalibration()` → `await CalibrateEmotion(e)` for
-each emotion → `FinishCalibration()` → `SaveCalibration(id)`.
+each emotion → `FinishCalibration()` → `SaveCalibration(id)`. An emotion can be collected once per
+`StartCalibration()`: calling `CalibrateEmotion` for it again throws `InvalidOperationException`, so to
+redo one, start over.
 
-Honest limits: a resting face has little shape, so Neutral benefits least. Calibrating Jev has not
-been shown to improve its accuracy; check with `Samples~/CalibrationCheck` on your own data.
+A resting face has little shape, so Neutral benefits least from calibration.
 
 ---
 
@@ -782,17 +783,19 @@ options.Model = "jev-1.13.0";                      // default; pin a versioned m
 options.TimeoutSeconds = 10;                       // per attempt
 options.MaxRetries = 2;                            // transient failures only
 options.SendOwnFacesInRequest = false;             // default
+options.LogRequests = false;                       // true: one Console line per request
 predictor.UseJev(options);
 ```
 
 | Option | Default | Rule |
 |---|---|---|
 | `ApiKey` (constructor) | none | required; no spaces or non-ASCII characters |
-| `BaseUrl` | `https://api.typesafe.ai` | an `https` URL (`http` only for localhost) |
+| `BaseUrl` | `https://api.typesafe.ai` | an `https` URL without credentials, query or fragment (`http` only for localhost) |
 | `Model` | `jev-1.13.0` | not empty |
 | `TimeoutSeconds` | 10 | above 0, at most 120 |
 | `MaxRetries` | 2 | 0 to 5 |
 | `SendOwnFacesInRequest` | `false` | also sends the player's calibration summary |
+| `LogRequests` | `false` | writes one Console line for every request the package sends |
 
 * **Your key.** The package never ships, stores or logs a key, and it is never written into a
   Unity asset. `JevOptions.FromEnvironment()` reads `TYPESAFE_API_KEY` (Editor and desktop only).
@@ -805,6 +808,16 @@ predictor.UseJev(options);
   30 seconds with the defaults (three tries of up to 10 s); lower `TimeoutSeconds` or `MaxRetries`
   if you need a faster verdict.
 * **Cost:** Typesafe bills per input token (about $0.042 per million at the time of writing).
+
+**Seeing the requests.** With `options.LogRequests = true` every request leaves one Console line.
+The key and the face data are never printed:
+
+```
+[Jev] POST https://api.typesafe.ai/v1/systemone -> 200 in 412 ms (attempt 1 of 3)
+```
+
+Nothing is sent unless the headset delivers a valid face window: without face tracking you get
+`NoTracking` and no `[Jev]` line.
 
 More: [`Documentation~/Jev.md`](./Documentation~/Jev.md).
 
@@ -822,8 +835,8 @@ With **Save Results** on (the default) every prediction is appended to a CSV fil
 
 * `emotion` is what your game received. `model_emotion` is the backend's own answer; they differ
   only when calibration changed it. `calibrated` is `yes` or `no`.
-* A prediction that failed because tracking was lost is a `no_tracking` row; one that failed because
-  the backend failed is a `backend_error` row.
+* A prediction that failed because tracking was lost is a `no_tracking` row; any other failure (the
+  backend failed or answered with something unusable) is a `backend_error` row.
 * One file per predictor per run of the app, named `session_<date>_<time>.csv` (UTC). The file does
   not say who played: note which session belongs to whom. Face-tracking values are never saved.
 
@@ -899,6 +912,7 @@ inside calibrations, so change it when a change would make old calibrations mean
 | `NotReady` | the component is disabled or on an inactive object | enable it |
 | `Unauthorized` | wrong, missing or expired Typesafe key | pass a valid key to `new JevOptions(...)` |
 | `Unreachable` / `Timeout` on a Quest | no internet, or Internet Access is not `Require` | enable it in Player Settings; check Wi-Fi |
+| No Jev requests seem to happen | no face data (`NoTracking`), or the key was rejected | set `options.LogRequests = true` and read the `[Jev]` lines (see [Jev in depth](#12-jev-in-depth)) |
 | `new JevOptions(...)` or `UseJev` throws `ArgumentException` | empty key, or a setting such as `BaseUrl` (must be https) is invalid | fix the value; the message lists every problem |
 | `LoadCalibration` returns `false` | no file, damaged file, **or made with another backend/model** | read `CalibrationError`; calibrate again |
 | `CalibrateAll` returns `false` | tracking lost, or too many Jev failures | read `CalibrationError` and `LastError`; run it again |
@@ -913,12 +927,9 @@ inside calibrations, so change it when a change would make old calibrations mean
 ## 16. More
 
 * **Documentation** — [`Documentation~/`](./Documentation~/README.md): architecture, backends, Jev,
-  calibration, error codes, data formats, design notes, migration from 2.1.
+  calibration, error codes, data formats and design notes.
 * **Samples** — import from the Package Manager: *Basic Usage* (Recipe 1), *Movement Calibration*
   (Recipe 2), *Calibration Check*, *Jev Prediction* (Recipe 3).
-* **Changes** — [CHANGELOG.md](./CHANGELOG.md).
-* **Tests** — `Tests/Editor` runs in Unity's Test Runner. `Tests~/DotnetHarness` runs the same tests
-  and a full end-to-end scenario without Unity: `dotnet test Tests/Tests.csproj`.
 * **Older code** — `FaceAuModel` (the original two-model predictor) is obsolete; use
   `NewFaceAuModel`. Models no longer used are kept in `Archive~/`.
 

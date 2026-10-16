@@ -44,4 +44,3 @@ At most one prediction runs at a time per `NewFaceAuModel`. A second concurrent 
 
 - A new model: implement `IEmotionBackend` and pass it to `UseBackend` (see [Backends](Backends.md)).
 - A different network layer (a proxy, a test double): implement `IHttpTransport` and pass it to `JevBackend`.
-- A different calibration store location: `new CalibrationStore(folder)`.

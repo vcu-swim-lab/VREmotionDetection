@@ -106,7 +106,5 @@ InitTestScene*.unity*
 /Archive~/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx
 /Archive~/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx.meta
 
-# Build output of the dotnet test harness
-/Tests~/DotnetHarness/**/bin/
-/Tests~/DotnetHarness/**/obj/
-/Tests~/DotnetHarness/artifacts/
+# Kept locally, not published
+/CHANGELOG.md

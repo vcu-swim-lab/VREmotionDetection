@@ -50,8 +50,8 @@ One warning per distinct message, not one per call: a lost-tracking loop logs on
 
 ## Results file
 
-Failed predictions appear in the CSV as `no_tracking` (tracking was lost) or `backend_error` (the backend failed). `NotReady` and `Busy` are caller mistakes and are not recorded. See [Data formats](DataFormats.md).
+Failed predictions appear in the CSV as `no_tracking` (tracking was lost) or `backend_error` (the backend failed or answered with something unusable). `NotReady`, `NotConfigured` and `Busy` are caller mistakes and are not recorded. See [Data formats](DataFormats.md).
 
 ## Checking before you run
 
-`UseJev(null)` and `new JevOptions("")` throw immediately. `JevOptions.Validate()` lists every problem with the settings at once. `LoadCalibration` and `SaveCalibration` report file problems through `CalibrationError` and a false return; only an invalid `userId` throws.
+`UseJev(null)` and `new JevOptions("")` throw immediately. `JevOptions.Validate()` lists every problem with the settings at once. `LoadCalibration` and `SaveCalibration` report file problems through `CalibrationError` and a false return; an invalid `userId` throws `ArgumentException` when the file is looked up.

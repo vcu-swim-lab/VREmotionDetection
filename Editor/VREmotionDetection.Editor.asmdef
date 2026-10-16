@@ -1,7 +1,9 @@
 {
     "name": "VREmotionDetection.Editor",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "VREmotionDetection"
+    ],
     "includePlatforms": [
         "Editor"
     ],

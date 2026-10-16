@@ -1,16 +1,8 @@
 using System;
 using NUnit.Framework;
 
-// Covers the rule that an invalid device reading never becomes data.
-//
-// Before this gating existed, `AUDevice.Poll` left its buffer untouched when face
-// tracking was unavailable and `DeviceManager` forwarded the resulting all-zero frame
-// anyway, so a dropout was indistinguishable from a genuinely neutral face once it
-// reached the model.
 public class DevicePollGatingTests
 {
-    // A stand-in for AUDevice whose validity is controlled by the test. It lives in the
-    // test assembly, which `DeviceManager.DevicesByType` deliberately does not scan.
     private sealed class FakeDevice : Device
     {
         private readonly int width;
@@ -77,7 +69,6 @@ public class DevicePollGatingTests
         Assert.That(device.PollCount, Is.EqualTo(11), "The device should still be polled.");
         Assert.That(ring.Generation, Is.EqualTo(1), "Invalid readings must not reach the buffer.");
 
-        // The one valid frame is still the newest entry: nothing overwrote it.
         CollectionAssert.AreEqual(new[] { 7f, 7f }, ring.buffer[ring.buffer.Length - 1]);
     }
 
@@ -88,7 +79,6 @@ public class DevicePollGatingTests
         var device = new FakeDevice(2);
         ring.Listen(device);
 
-        // Fill the window with genuine readings.
         device.ReportValid = true;
         for (int frame = 1; frame <= 5; frame++)
         {
@@ -96,7 +86,6 @@ public class DevicePollGatingTests
             DeviceManager.PollAndDispatch(device);
         }
 
-        // Lose tracking for a while. A dropout leaves the frame all zeros.
         device.ReportValid = false;
         for (int i = 0; i < 5; ++i)
         {

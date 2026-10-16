@@ -1,0 +1,38 @@
+# Migrating from 2.1 to 2.2
+
+## What keeps working
+
+Everything in 2.1: `NewFaceAuModel` with its `Predict`, `PredictDetailed`, `PredictRaw`, the calibration calls, the results calls, `FacePrediction`, `Emotion`, `DeviceManager`, the serialized fields (`faceModel`, `useCalibration`, `saveResults`) and the saved calibration and results files. Scenes and prefabs do not need changes. A calibration saved by 2.1 loads in 2.2.
+
+## What is new
+
+- Backends: `UseSparseVr()`, `UseJev(JevOptions)`, `UseBackend(IEmotionBackend)`, `ActiveBackendId`.
+- Typed errors: `TryPredict()`, `LastError`, `PredictionFailed`.
+- `CalibrateAll(prompt)`, `ScoreWith(backend, window)`, `CreateJevBackend(options)`.
+- `FacePrediction.Raw`, `ScoreOf(emotion)`, `BackendId`.
+- The Jev backend and its sample, `CalibrationStore`, `Documentation~`.
+
+## Behaviour changes
+
+| Change | Why |
+|---|---|
+| The microphone is no longer started at start-up | it was never used; it triggered a permission prompt for face-only apps |
+| A prediction that overlaps another returns `Busy` | two predictions used to reset each other's window |
+| `BeginCalibrationEmotion` and `AddCalibrationSample` do nothing (false) when calibration is off | the README always said so; they used to throw |
+| `SaveCalibration` and `LoadCalibration` report file problems through `CalibrationError` | they used to throw on I/O errors |
+| `PredictDetailed` with a timeout of 0 or less throws `ArgumentOutOfRangeException`; before start it returns `NotReady` | they used to fail with a `NullReferenceException` or time out silently |
+| Failures that are not lost tracking are written as `backend_error` rows | so a service failure is not mistaken for lost tracking |
+| `userId` such as `"abc\n"` is refused | the old pattern accepted a trailing newline |
+| A results file name that is already taken gets a `_2` suffix | two predictors started in the same second shared one file |
+| Disabling and re-enabling the component restores prediction | the model used to stay disposed |
+| The package needs `com.unity.nuget.newtonsoft-json` | used by the Jev backend only |
+
+## If you used the unreleased Jev branch
+
+| Before | Now |
+|---|---|
+| `Backend = PredictionBackend.Jev` and a `JevSettings` asset | `UseJev(new JevOptions(apiKey))` |
+| `JevError`, `JevProfileSent` | `LastError`, `BackendResult.ReferenceFacesSent` |
+| `ScoreWithJev(window)`, `ClassifyWithJev(window)` | `ScoreWith(predictor.CreateJevBackend(options), window)` |
+| key read from an asset or compiled into a script | pass the key as a parameter |
+| calibration always collected with the local model | calibration follows the active backend |

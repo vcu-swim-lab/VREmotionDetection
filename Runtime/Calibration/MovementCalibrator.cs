@@ -3,37 +3,12 @@ using System.Collections.Generic;
 
 namespace VcuSwimLab.Calibration
 {
-    /// <summary>
-    /// Movement calibration for one player: learn how this player makes each emotion, then
-    /// classify every later prediction against it.
-    /// </summary>
-    /// <remarks>
-    /// The same method the game's protocol runs in its `movement` mode (`RuntimeCalibrator`),
-    /// built from the same builders and the same decision, `CalibrationMath.NearestOfSum`:
-    /// per emotion, the cosine of the model's log-scores to the player's own score centroid,
-    /// plus the cosine of the face movements to the player's own movement centroid. The
-    /// highest sum wins.
-    ///
-    /// Per emotion it keeps nine samples. The first sample after `BeginEmotion` is dropped,
-    /// as tick 0 is in the protocol: it is taken while the player is still changing face. So
-    /// a complete emotion takes ten samples, and the protocol takes one per second.
-    ///
-    /// A missing sample (no tracking) is not counted, so the caller can simply try again.
-    /// Calibration either completes for every emotion or reports why not; it never runs on a
-    /// partial set.
-    /// </remarks>
     public sealed class MovementCalibrator
     {
-        /// <summary>
-        /// Bumped when anything that changes a calibrated decision changes. Session logs record
-        /// it so a pooled analysis can refuse to mix implementations.
-        /// </summary>
         public const string ImplementationVersion = "runtime-calibration-v1";
 
-        /// <summary>Samples kept per emotion.</summary>
         public const int SamplesPerEmotion = PersonalCentroidBuilder.RequiredTicksPerCentroid;
 
-        /// <summary>Samples taken per emotion, including the dropped first one.</summary>
         public const int SamplesToCollectPerEmotion = PersonalCentroidBuilder.LastScoredTick + 1;
 
         private readonly string[] classNames;
@@ -45,15 +20,12 @@ namespace VcuSwimLab.Calibration
         private double[][] scoreCentroids;
         private double[][] movementCentroids;
 
-        /// <summary>True once `Finish` built a complete calibration.</summary>
         public bool IsReady { get; private set; }
 
-        /// <summary>Why the last `Finish` failed; empty when it did not.</summary>
         public string Error { get; private set; } = string.Empty;
 
         public IReadOnlyList<string> ClassNames => classNames;
 
-        /// <param name="classNames">The model's classes, in output order.</param>
         public MovementCalibrator(IReadOnlyList<string> classNames)
         {
             if (classNames == null) throw new ArgumentNullException(nameof(classNames));
@@ -68,7 +40,6 @@ namespace VcuSwimLab.Calibration
             Reset();
         }
 
-        /// <summary>Forget everything and start a new calibration.</summary>
         public void Reset()
         {
             scoreBuilder = new PersonalCentroidBuilder(classNames.Length);
@@ -81,12 +52,6 @@ namespace VcuSwimLab.Calibration
             Error = string.Empty;
         }
 
-        /// <summary>
-        /// Start collecting one emotion. Call it when the player is asked to make that face.
-        /// </summary>
-        /// <exception cref="InvalidOperationException">
-        /// The emotion already has samples, or calibration is finished. Call `Reset` to redo it.
-        /// </exception>
         public void BeginEmotion(int classIndex)
         {
             CheckClass(classIndex);
@@ -105,21 +70,12 @@ namespace VcuSwimLab.Calibration
             current = classIndex;
         }
 
-        /// <summary>True when the emotion has all its samples.</summary>
         public bool IsEmotionComplete(int classIndex)
         {
             CheckClass(classIndex);
             return taken[classIndex] >= SamplesToCollectPerEmotion;
         }
 
-        /// <summary>
-        /// Offer one sample of the current emotion: the model's scores and the window they were
-        /// computed from.
-        /// </summary>
-        /// <returns>
-        /// True when the sample was counted. False when it was missing (call again), or when the
-        /// emotion is already complete.
-        /// </returns>
         public bool Observe(IReadOnlyList<float> scores, IReadOnlyList<float[]> window)
         {
             if (current < 0)
@@ -139,13 +95,6 @@ namespace VcuSwimLab.Calibration
             return true;
         }
 
-        /// <summary>
-        /// Offer the sample taken at a fixed position since `BeginEmotion`: 0 for the first,
-        /// which is dropped, then 1..9. For callers that sample on a clock and want a missed
-        /// sample to stay missed, as the study protocol and its offline analysis do. Offer each
-        /// position at most once.
-        /// </summary>
-        /// <returns>True when the sample was kept.</returns>
         public bool ObserveAt(int sampleIndex, IReadOnlyList<float> scores, IReadOnlyList<float[]> window)
         {
             if (current < 0)
@@ -170,13 +119,8 @@ namespace VcuSwimLab.Calibration
             return keptScores && keptMovement;
         }
 
-        /// <summary>Samples kept so far per class (the dropped first one not included).</summary>
         public int[] KeptSampleCounts() => scoreBuilder.TickCounts();
 
-        /// <summary>
-        /// Build the calibration from the collected samples.
-        /// </summary>
-        /// <returns>False, with `Error` set, when any emotion is incomplete or a sample was bad.</returns>
         public bool Finish()
         {
             IsReady = false;
@@ -195,10 +139,6 @@ namespace VcuSwimLab.Calibration
             return true;
         }
 
-        /// <summary>
-        /// The calibrated decision for one prediction, or null when calibration is not ready or
-        /// the prediction cannot be scored (missing or malformed scores or window).
-        /// </summary>
         public NearestCentroid? Classify(IReadOnlyList<float> scores, IReadOnlyList<float[]> window)
         {
             if (!IsReady || scores == null || window == null || scores.Count != classNames.Length)
@@ -218,13 +158,6 @@ namespace VcuSwimLab.Calibration
             }
         }
 
-        /// <summary>
-        /// The finished calibration as plain arrays, for saving per user. Null when not ready.
-        /// </summary>
-        /// <remarks>
-        /// These vectors describe one person's face. Keep them on the user's device and never
-        /// in the model asset or a repository.
-        /// </remarks>
         public CalibrationProfile ExportProfile()
         {
             if (!IsReady) return null;
@@ -233,10 +166,6 @@ namespace VcuSwimLab.Calibration
                                           Copy(movementCentroids));
         }
 
-        /// <summary>
-        /// A ready calibrator from a saved profile, or null with `error` set when the profile
-        /// is from another implementation, has other classes, or is malformed.
-        /// </summary>
         public static MovementCalibrator FromProfile(CalibrationProfile profile,
                                                      IReadOnlyList<string> classNames, out string error)
         {

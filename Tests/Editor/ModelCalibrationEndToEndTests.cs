@@ -3,20 +3,17 @@ using System;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEditor;
+using VcuSwimLab.Backends.SparseVr;
 using VcuSwimLab.Calibration;
 
 using Random = System.Random;
 
-// The shipped model and movement calibration together: the real ONNX scores feed the
-// calibrator exactly as NewFaceAuModel feeds it, on Quest Pro-shaped input (5 frames x 70
-// face-tracking weights, 0 to 1). Checks the uncalibrated path, then the calibrated one.
 public class ModelCalibrationEndToEndTests
 {
     private const string ModelPath = NewFaceAuModel.DefaultModelPath;
 
     private static readonly string[] Names = Enum.GetNames(typeof(Emotion));
 
-    // A window in which emotion `cls` moves its own group of face values, with some noise.
     private static float[][] Window(int cls, Random rng)
     {
         var window = new float[NewFaceAuModel.WindowFrames][];
@@ -47,10 +44,9 @@ public class ModelCalibrationEndToEndTests
         var asset = AssetDatabase.LoadAssetAtPath<ModelAsset>(ModelPath);
         Assert.IsNotNull(asset, $"the shipped model is missing at {ModelPath}");
 
-        using var worker = new Worker(Utils.PrepareModel(asset, appendSoftmax: false), BackendType.CPU);
+        using var worker = new Worker(OnnxModelLoader.Prepare(asset, appendSoftmax: false), BackendType.CPU);
         var rng = new Random(20261012);
 
-        // Uncalibrated: seven probabilities that sum to 1, and no calibrated answer yet.
         var calibrator = new MovementCalibrator(Names);
         var first = Window(0, rng);
         var scores = Scores(worker, first);
@@ -60,7 +56,6 @@ public class ModelCalibrationEndToEndTests
         Assert.That(sum, Is.EqualTo(1f).Within(1e-4f));
         Assert.IsNull(calibrator.Classify(scores, first), "no calibrated answer before calibration");
 
-        // Calibrate: ten samples per emotion, as CalibrateEmotion collects them.
         for (int cls = 0; cls < Names.Length; ++cls)
         {
             calibrator.BeginEmotion(cls);
@@ -73,7 +68,6 @@ public class ModelCalibrationEndToEndTests
 
         Assert.IsTrue(calibrator.Finish(), calibrator.Error);
 
-        // Calibrated: every new window of an emotion goes back to that emotion.
         for (int cls = 0; cls < Names.Length; ++cls)
         {
             var window = Window(cls, rng);

@@ -10,6 +10,12 @@ sure it is, about twice a second. You write a few lines; the package does the re
 var (emotion, confidence) = await predictor.Predict();      // Happiness, 0.81
 ```
 
+> **Two ways to predict.** **SparseVr** runs on the headset with the bundled model: free, offline, and
+> the face data never leaves the device. **Jev** asks Typesafe's cloud model: it is a **third-party
+> paid service** that needs your own Typesafe account, an API key and internet, and a description of
+> the player's face is sent to Typesafe. Read [Privacy, data and limitations](#16-privacy-data-and-limitations)
+> before you use Jev with real players. Predictions are estimates, **not a medical diagnosis**.
+
 ## Contents
 
 1. [What this package is for](#1-what-this-package-is-for)
@@ -27,7 +33,9 @@ var (emotion, confidence) = await predictor.Predict();      // Happiness, 0.81
 13. [Results files](#13-results-files)
 14. [Write your own backend](#14-write-your-own-backend)
 15. [Troubleshooting](#15-troubleshooting)
-16. [More](#16-more)
+16. [Privacy, data and limitations](#16-privacy-data-and-limitations)
+17. [Related papers and citation](#17-related-papers-and-citation)
+18. [More](#18-more)
 
 ---
 
@@ -74,6 +82,20 @@ If you are unsure, start with **SparseVr**. It is the default.
 | **Internet Access = Require** | only if you use Jev: *Player Settings → Other Settings → Internet Access* |
 | A **Typesafe API key** | only if you use Jev. Get your own at [console.typesafe.ai/keys](https://console.typesafe.ai/keys). The package provides none |
 
+**Versions this package is built against**
+
+| Component | Version |
+|---|---|
+| Unity | 6000.0 or newer (built with 6000.0.33f1) |
+| Meta XR Core SDK | 77.0.0 (the package installs it) |
+| Unity Inference Engine | 2.2.1 |
+| OpenXR plugin | 1.15.0 |
+| Android | 64-bit ARM; the demo game builds for API level 32 |
+| Headset | Meta Quest Pro |
+
+The versions confirmed on a headset for each release are listed in its
+[release notes](https://github.com/vcu-swim-lab/VREmotionDetection/releases).
+
 ---
 
 ## 3. Add it to your project
@@ -89,8 +111,17 @@ If you are unsure, start with **SparseVr**. It is the default.
 4. Click **Install**. Unity also installs what the package depends on: Unity's Inference Engine,
    the Meta XR Core SDK, OpenXR and Newtonsoft Json.
 
-To lock a version, add `#` and a tag or commit to the URL, for example
-`https://github.com/vcu-swim-lab/VREmotionDetection.git#<commit-hash>`.
+To lock a version, add `#` and a release tag to the URL, for example
+`https://github.com/vcu-swim-lab/VREmotionDetection.git#v3.0.0` (a commit hash works too).
+
+**From OpenUPM** (once the package is listed on [openupm.com](https://openupm.com)): run
+`openupm add com.vcu-swim-lab.vr-emotion-detection`, or in Unity open *Edit → Project Settings →
+Package Manager*, add a scoped registry with name `OpenUPM`, URL `https://package.openupm.com` and
+scope `com.vcu-swim-lab`, then install the package from *Package Manager → My Registries*. All its
+other dependencies come from Unity's own registry.
+
+All the package's types live in the namespace `VcuSwimLab.VREmotionDetection`: start every script
+that uses them with `using VcuSwimLab.VREmotionDetection;`.
 
 **Samples:** in the Package Manager select *VR Emotion Detector*, open the **Samples** tab and
 **Import** one: *Basic Usage*, *Movement Calibration*, *Calibration Check*, *Jev Prediction*.
@@ -120,6 +151,7 @@ Add this script to the same GameObject and press Play on the headset (or Quest L
 
 ```csharp
 using UnityEngine;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class FirstPrediction : MonoBehaviour
@@ -212,6 +244,7 @@ The simplest setup. Nothing to configure: SparseVr is the default.
 
 ```csharp
 using UnityEngine;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class SparseVrExample : MonoBehaviour
@@ -261,6 +294,7 @@ The order: **choose backend → calibration on → load a saved one, otherwise c
 
 ```csharp
 using UnityEngine;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class SparseVrCalibratedExample : MonoBehaviour
@@ -337,6 +371,7 @@ its own.
 ```csharp
 using UnityEngine;
 using VcuSwimLab.Backends.Jev;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class JevExample : MonoBehaviour
@@ -396,6 +431,7 @@ a network request per sample.
 ```csharp
 using UnityEngine;
 using VcuSwimLab.Backends.Jev;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class JevCalibratedExample : MonoBehaviour
@@ -488,6 +524,7 @@ selected**; the predictor keeps using SparseVr.
 using UnityEngine;
 using VcuSwimLab.Backends;
 using VcuSwimLab.Backends.Jev;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class CompareBackendsExample : MonoBehaviour
@@ -550,6 +587,7 @@ Two ways to hear about problems: look at each outcome, and/or subscribe to the e
 ```csharp
 using UnityEngine;
 using VcuSwimLab.Backends;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class FailureHandlingExample : MonoBehaviour
@@ -868,6 +906,7 @@ A backend turns a window of face data into seven scores. Implement `IEmotionBack
 ```csharp
 using UnityEngine;
 using VcuSwimLab.Backends;
+using VcuSwimLab.VREmotionDetection;
 
 public sealed class AlwaysNeutralBackend : IEmotionBackend
 {
@@ -924,14 +963,99 @@ inside calibrations, so change it when a change would make old calibrations mean
 
 ---
 
-## 16. More
+## 16. Privacy, data and limitations
+
+### What stays on the device
+
+* **SparseVr** runs entirely on the headset. In this mode the package makes **no network request**.
+* Calibration files and results files are written to the app's storage on the device
+  (`Application.persistentDataPath`, sections 11 and 13). The package never uploads them. They
+  describe one person's face movements: never commit or share them.
+* The package contains **no analytics or telemetry** and no key of ours.
+
+### What leaves the device in Jev mode
+
+Each prediction is one HTTPS request to Typesafe (`https://api.typesafe.ai`, or your own `BaseUrl`):
+
+| Sent | Example |
+|---|---|
+| the model name | `jev-1.13.0` |
+| the overall face activity and the strongest face movements, each with a strength word | `high`, `LipCornerPullerL (strong)` |
+| the seven emotion questions, with fixed wording | |
+| **only with `SendOwnFacesInRequest`:** how close the face is to each of this player's calibrated faces: similarity, rank, signature movements and how many of them are active | `3 of 4` |
+| your API key, in the `Authorization` header only | |
+
+**Not sent:** camera images, raw sensor values over time, a player name or id, the calibration file,
+the results files or any device identifier. Typesafe still sees what any web server sees: your IP
+address and the time of each request.
+
+### Typesafe's terms, retention and cost
+
+Jev is run by Typesafe AI, not by this lab. Read their [Terms of Use](https://typesafe.ai/legal/terms)
+and [Privacy Policy](https://typesafe.ai/legal/privacy-policy). The policy (dated 19 November 2025 when
+this was written) says Typesafe will not train or fine-tune models on your input, keeps personal data
+only as long as reasonably necessary to provide the service, and deletes it on request
+(privacy@typesafe.ai). So **retention and deletion are controlled by Typesafe**; the package stores
+nothing on a server. Typesafe charges per input token (about $42 per billion at the time of writing,
+see [typesafe.ai](https://typesafe.ai)); accounts, limits and availability are theirs too.
+
+### Consent
+
+Face-tracking data about a person is personal data, and some laws treat it as biometric. Before you
+send it to a third party get the player's **explicit consent**, and follow your study protocol (IRB),
+the law and your platform's rules. Make Jev an opt-in choice in your game.
+
+### Known limitations
+
+* Seven basic emotions only, estimated from face movement. A face is not a feeling: the same
+  expression can mean different things to different people.
+* The bundled SparseVr model is trained on acted expressions recorded with Quest Pro headsets.
+  Natural, spontaneous emotions look different from acted ones and are harder to recognise (see the
+  papers in section 17). No accuracy figure is promised here: results from a paper do not carry over
+  automatically to your game and your players.
+* It needs a Quest Pro with face tracking allowed; fit and tracking quality change the result.
+  Neutral is the weakest class. Calibration helps but costs about a minute and a half per player.
+* Jev answers come from a cloud model and can change between model versions: pin `Model`.
+* **This is not a medical or clinical tool.** Do not use it to diagnose, treat or screen anyone, or
+  to make decisions about people.
+
+### Security and privacy reports
+
+Please report a security or privacy problem **privately** to **Kostadin Damevski,
+[kdamevski@vcu.edu](mailto:kdamevski@vcu.edu)**. Do not post keys, face data or calibration files in a
+public issue. If an API key was ever committed, revoke it at Typesafe first.
+
+---
+
+## 17. Related papers and citation
+
+* Tare, Rahman, Choi, Lim, Lee, Lee, Cho, Damevski. *Detecting Natural Emotions in Virtual Reality
+  Through Facial Movement Analysis.* VRST 2025.
+  [doi:10.1145/3756884.3766013](https://doi.org/10.1145/3756884.3766013)
+* Rahman, Choi, Lim, Lee, Lee, Cho, Damevski. *Toward Generalized Emotion Recognition in VR by
+  Bridging Natural and Acted Facial Expressions.* Sensors 26(3):845, 2026.
+  [doi:10.3390/s26030845](https://doi.org/10.3390/s26030845)
+* Ortmann, Wang, Putzar. *EmojiHeroVR: A Study on Facial Expression Recognition under Partial
+  Occlusion from Head-Mounted Displays.* ACII 2024.
+  [doi:10.1109/ACII63134.2024.00014](https://doi.org/10.1109/ACII63134.2024.00014)
+* Rahman, Kang, Jang, Lee, Cho, Damevski. *When Pair Programming Gets Emotional: A Case Study of
+  What LLMs Still Miss.* IJSEKE, 2026.
+  [doi:10.1142/S0218194026500294](https://doi.org/10.1142/S0218194026500294)
+
+**Related papers and BibTeX:** copy the entries from [`CITATIONS.bib`](./CITATIONS.bib). To cite this
+software, use GitHub's **Cite this repository** button, which reads [`CITATION.cff`](./CITATION.cff).
+Third-party components and licences are listed in [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
+
+---
+
+## 18. More
 
 * **Documentation** — [`Documentation~/`](./Documentation~/README.md): architecture, backends, Jev,
   calibration, error codes, data formats and design notes.
 * **Samples** — import from the Package Manager: *Basic Usage* (Recipe 1), *Movement Calibration*
   (Recipe 2), *Calibration Check*, *Jev Prediction* (Recipe 3).
 * **Older code** — `FaceAuModel` (the original two-model predictor) is obsolete; use
-  `NewFaceAuModel`. Models no longer used are kept in `Archive~/`.
+  `NewFaceAuModel`. The models it needed are no longer shipped; they remain in the Git history.
 
 ## License
 

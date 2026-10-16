@@ -102,9 +102,5 @@ InitTestScene*.unity*
 /tmp/
 /tmp.meta
 
-# Experimental models kept on the researchers' machines; only the deployed model ships.
-/Archive~/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx
-/Archive~/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx.meta
-
-# Kept locally, not published
-/CHANGELOG.md
+# Lab-internal release guide, not part of the package
+/PUBLISHING_GUIDE.md.pdf

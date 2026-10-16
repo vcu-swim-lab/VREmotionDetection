@@ -40,7 +40,11 @@ One request (`POST <BaseUrl>/v1/systemone`) with seven yes/no ("noul") questions
 
 Each question carries a short instruction and the true/false criteria for its emotion. The wording lives in one place, `JevPrompt`, and has a version number that is part of the backend id.
 
-Face data about the player leaves the device. Get the player's consent.
+Face data about the player leaves the device. Get the player's consent. Nothing else is sent: no camera image, player name, id or device identifier, and the API key travels only in the `Authorization` header.
+
+## Service, terms and cost
+
+Jev is a third-party paid service run by Typesafe AI. It needs your own account, API key and internet access, and it is billed per input token by Typesafe. Typesafe's [Terms of Use](https://typesafe.ai/legal/terms) and [Privacy Policy](https://typesafe.ai/legal/privacy-policy) apply; retention and deletion are controlled by Typesafe. The README section "Privacy, data and limitations" has the details and the consent advice.
 
 ## Results
 

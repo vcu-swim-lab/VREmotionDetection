@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file."
+title: "VREmotionDetection"
+type: software
+version: 3.0.0
+date-released: 2026-10-17
+license: MIT
+repository-code: "https://github.com/vcu-swim-lab/VREmotionDetection"
+url: "https://github.com/vcu-swim-lab/VREmotionDetection"
+abstract: >-
+  A Unity package that predicts seven emotions (anger, disgust, fear, happiness, neutral, sadness,
+  surprise) from Meta Quest Pro face tracking. It runs an on-device model (SparseVr) or Typesafe's
+  Jev model, with optional per-player calibration.
+keywords:
+  - emotion recognition
+  - facial expression
+  - face tracking
+  - virtual reality
+  - Meta Quest Pro
+  - Unity
+authors:
+  - family-names: Damevski
+    given-names: Kostadin
+    email: kdamevski@vcu.edu
+    affiliation: Virginia Commonwealth University
+  # Add further authors here, one block per person (family-names and given-names are required):
+  # - family-names: Family
+  #   given-names: Given
+  #   email: name@example.edu
+  #   affiliation: Institution
+  #   orcid: "https://orcid.org/0000-0000-0000-0000"
+contact:
+  - family-names: Damevski
+    given-names: Kostadin
+    email: kdamevski@vcu.edu
+    affiliation: Virginia Commonwealth University

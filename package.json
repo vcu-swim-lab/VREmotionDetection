@@ -1,6 +1,6 @@
 {
   "name": "com.vcu-swim-lab.vr-emotion-detection",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "displayName": "VR Emotion Detector",
   "description": "A package that helps with emotion detection in VR",
   "unity": "2024.0",
@@ -12,7 +12,8 @@
   "dependencies": {
     "com.unity.ai.inference": "2.2.1",
     "com.meta.xr.sdk.core": "77.0.0",
-    "com.unity.xr.openxr": "1.15.0"
+    "com.unity.xr.openxr": "1.15.0",
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
   },
   "samples": [
     {

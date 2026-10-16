@@ -5,8 +5,15 @@ using Unity.Collections;
 using UnityEngine;
 using System.Collections.Generic;
 using VcuSwimLab.Calibration;
+using VcuSwimLab.Jev;
 
 using Debug = UnityEngine.Debug;
+
+public enum PredictionBackend
+{
+    LocalModel,
+    Jev,
+}
 
 // One face prediction together with everything needed to reproduce it offline.
 //
@@ -31,19 +38,27 @@ public readonly struct FacePrediction
     // The input window, oldest frame first: [frames][features].
     public readonly float[][] Window;
 
+    // The backend's own answers before they are divided by their sum, for a backend that
+    // answers each emotion separately (Jev). Null for the local model.
+    public readonly float[] Raw;
+
     // Ring buffer generation after the window was captured. The difference between two
     // consecutive predictions is the number of valid frames that arrived in between, so
     // a smaller-than-expected step means face tracking dropped out.
     public readonly long Generation;
 
-    internal FacePrediction(Emotion emotion, float confidence, float[] scores, float[][] window, long generation)
+    internal FacePrediction(Emotion emotion, float confidence, float[] scores, float[][] window, long generation,
+                            float[] raw = null)
     {
         Emotion = emotion;
         Confidence = confidence;
         Scores = scores;
         Window = window;
         Generation = generation;
+        Raw = raw;
     }
+
+    public float ScoreOf(Emotion emotion) => (Raw ?? Scores)[(int)emotion];
 }
 
 // The face emotion predictor, using one acted-data model.
@@ -88,6 +103,22 @@ public class NewFaceAuModel : MonoBehaviour
     [SerializeField]
     private bool saveResults = true;
 
+    [Tooltip("LocalModel runs the bundled ONNX model on the device. Jev asks Typesafe's Jev model over " +
+             "the network and needs your own API key. Calibration collects its samples with the " +
+             "selected backend, so a calibration is tied to the backend it was made with.")]
+    [SerializeField]
+    private PredictionBackend backend = PredictionBackend.LocalModel;
+
+    [Tooltip("Create it with Create > VR Emotion > Jev Settings. Only used when the backend is Jev. " +
+             "Leave it empty to use the defaults with the TYPESAFE_API_KEY environment variable.")]
+    [SerializeField]
+    private JevSettings jevSettings;
+
+    private string jevError;
+    private string lastJevWarning;
+    private bool jevProfileSent;
+    private JevSettings defaultJevSettings;
+
 #if UNITY_EDITOR
     // Unity calls this when the component is added, so the default model is assigned
     // without searching for it.
@@ -108,9 +139,59 @@ public class NewFaceAuModel : MonoBehaviour
     // Name of the bound model asset, for session metadata.
     public string FaceModelName => faceModel != null ? faceModel.name : null;
 
+    public PredictionBackend Backend
+    {
+        get => backend;
+        set
+        {
+            if (value == backend)
+            {
+                return;
+            }
+
+            backend = value;
+            ClearCalibration();
+        }
+    }
+
+    public JevSettings JevSettings
+    {
+        get => jevSettings;
+        set => jevSettings = value;
+    }
+
+    public string JevError => jevError;
+
+    public bool JevProfileSent => jevProfileSent;
+
+    public string JevPreflight() => JevClient.Preflight(ActiveJevSettings);
+
+    private JevSettings ActiveJevSettings
+    {
+        get
+        {
+            if (jevSettings != null)
+            {
+                return jevSettings;
+            }
+
+            if (defaultJevSettings == null)
+            {
+                defaultJevSettings = ScriptableObject.CreateInstance<JevSettings>();
+            }
+
+            return defaultJevSettings;
+        }
+    }
+
     public void Start()
     {
         Debug.Assert(faceModel != null, $"Face model not assigned in ${GetType().Name}");
+
+        if (backend == PredictionBackend.Jev)
+        {
+            WarnJevOnce(JevPreflight());
+        }
 
         // The face graphs already end in a Softmax node; appending another would leave
         // `Confidence` as something that is not a probability.
@@ -195,6 +276,8 @@ public class NewFaceAuModel : MonoBehaviour
     // A prediction that is not saved to the results file; calibration samples use it.
     private async Awaitable<FacePrediction?> PredictUnrecorded(float timeoutSeconds)
     {
+        jevError = null;
+
         var window = await AwaitWindow(timeoutSeconds);
         if (window == null)
         {
@@ -203,26 +286,78 @@ public class NewFaceAuModel : MonoBehaviour
 
         long generation = inputBuffer.Generation;
 
+        var (scores, raw) = backend == PredictionBackend.Jev ? await ScoreWithJevSet(window) : await ScoreWithModel(window);
+        if (scores == null)
+        {
+            return null;
+        }
+
+        int best = Utils.Argmax(scores);
+        return new FacePrediction((Emotion)best, (raw ?? scores)[best], scores, window, generation, raw);
+    }
+
+    private async Awaitable<(float[] scores, float[] raw)> ScoreWithModel(float[][] window)
+    {
         using var input = window.ToTensor();
         using var output = await Infer(input);
+        return (output.DownloadToArray(), null);
+    }
 
-        var scores = output.DownloadToArray();
+    private async Awaitable<(float[] scores, float[] raw)> ScoreWithJevSet(float[][] window)
+    {
+        var result = await ClassifyWithJev(window);
+        return (result.Scores, result.Raw);
+    }
 
-        int maxIndex = 0;
-        for (int i = 1; i < scores.Length; ++i)
+    public async Awaitable<float[]> ScoreWithJev(float[][] window)
+    {
+        var result = await ClassifyWithJev(window);
+        return result.Scores;
+    }
+
+    public async Awaitable<JevResult> ClassifyWithJev(float[][] window, bool requireProfile = false)
+    {
+        JevResult result;
+        if (requireProfile && !IsCalibrated)
         {
-            if (scores[i] > scores[maxIndex])
+            result = JevResult.Failure("calibration is required but no calibration is ready, so calibrated Jev cannot answer");
+        }
+        else
+        {
+            var profile = ActiveJevSettings.SendOwnFacesInRequest && useCalibration ? calibrator?.ExportProfile() : null;
+            try
             {
-                maxIndex = i;
+                result = await JevClient.Classify(ActiveJevSettings, window, profile);
+            }
+            catch (Exception e)
+            {
+                result = JevResult.Failure($"{e.GetType().Name}: {e.Message}");
             }
         }
 
-        return new FacePrediction((Emotion)maxIndex, scores[maxIndex], scores, window, generation);
+        jevError = result.Error;
+        jevProfileSent = result.ProfileSent;
+        WarnJevOnce(result.Error);
+        return result;
+    }
+
+    private void WarnJevOnce(string error)
+    {
+        if (error == lastJevWarning)
+        {
+            return;
+        }
+
+        lastJevWarning = error;
+        if (error != null)
+        {
+            Debug.LogWarning($"{nameof(NewFaceAuModel)}: Jev did not answer ({error}).");
+        }
     }
 
     // Uses movement calibration when it is ready (see `CalibrateEmotion`), and the model's own
     // answer otherwise. The returned confidence is always the model's probability for the
-    // returned emotion.
+    // returned emotion; with the Jev backend it is Jev's own answer for that emotion.
     public async Awaitable<(Emotion, float)> Predict()
     {
         var prediction = await PredictDetailed();
@@ -234,7 +369,7 @@ public class NewFaceAuModel : MonoBehaviour
         }
 
         var emotion = CalibratedEmotion(prediction.Value) ?? prediction.Value.Emotion;
-        return (emotion, prediction.Value.Scores[(int)emotion]);
+        return (emotion, prediction.Value.ScoreOf(emotion));
     }
 
     // ---- Movement calibration (optional) -------------------------------------------------
@@ -313,6 +448,19 @@ public class NewFaceAuModel : MonoBehaviour
         public double[] movementCentroids;
     }
 
+    internal static string CalibrationModelId(PredictionBackend backend, string faceModelName, string jevModel)
+    {
+        return backend == PredictionBackend.Jev ? $"jev:{jevModel}" : faceModelName;
+    }
+
+    private string CalibrationModel => CalibrationModelId(
+        backend, FaceModelName, backend == PredictionBackend.Jev ? ActiveJevSettings.Model : null);
+
+    private float[] CalibrationScores(float[] scores)
+    {
+        return backend == PredictionBackend.Jev ? JevScores.ForCalibration(scores) : scores;
+    }
+
     // Where a user's calibration is saved. `userId`: letters, digits, '-' and '_' only.
     public static string CalibrationPath(string userId)
     {
@@ -339,7 +487,7 @@ public class NewFaceAuModel : MonoBehaviour
         var saved = new SavedCalibration
         {
             implementationVersion = profile.ImplementationVersion,
-            faceModel = FaceModelName,
+            faceModel = CalibrationModel,
             savedUtc = DateTime.UtcNow.ToString("o"),
             classNames = profile.ClassNames,
             scoreWidth = profile.ScoreCentroids[0].Length,
@@ -386,10 +534,10 @@ public class NewFaceAuModel : MonoBehaviour
             return false;
         }
 
-        if (saved == null || saved.faceModel != FaceModelName)
+        if (saved == null || saved.faceModel != CalibrationModel)
         {
             loadError = $"the saved calibration for '{userId}' was made with model " +
-                        $"'{saved?.faceModel}', not '{FaceModelName}'; calibrate again";
+                        $"'{saved?.faceModel}', not '{CalibrationModel}'; calibrate again";
             return false;
         }
 
@@ -471,7 +619,7 @@ public class NewFaceAuModel : MonoBehaviour
             var prediction = await PredictUnrecorded(DefaultTimeoutSeconds);
             if (prediction.HasValue)
             {
-                calibrator.Observe(prediction.Value.Scores, prediction.Value.Window);
+                calibrator.Observe(CalibrationScores(prediction.Value.Scores), prediction.Value.Window);
             }
 
             float remaining = nextSample - Time.time;
@@ -518,7 +666,7 @@ public class NewFaceAuModel : MonoBehaviour
             throw new InvalidOperationException("call StartCalibration before AddCalibrationSample");
         }
 
-        return calibrator.ObserveAt(position, prediction?.Scores, prediction?.Window);
+        return calibrator.ObserveAt(position, CalibrationScores(prediction?.Scores), prediction?.Window);
     }
 
     // Samples kept so far per emotion, in Emotion order; null when no calibration was started.
@@ -534,7 +682,7 @@ public class NewFaceAuModel : MonoBehaviour
             return null;
         }
 
-        return calibrator?.Classify(prediction.Scores, prediction.Window);
+        return calibrator?.Classify(CalibrationScores(prediction.Scores), prediction.Window);
     }
 
     // The calibrated emotion for a prediction from `PredictDetailed`, or null when
@@ -581,14 +729,22 @@ public class NewFaceAuModel : MonoBehaviour
 
         if (prediction == null)
         {
-            results.RecordNoTracking();
+            if (jevError != null)
+            {
+                results.RecordJevError();
+            }
+            else
+            {
+                results.RecordNoTracking();
+            }
+
             return;
         }
 
         var value = prediction.Value;
         var calibrated = CalibratedEmotion(value);
         var emotion = calibrated ?? value.Emotion;
-        results.Record(emotion, value.Scores[(int)emotion], calibrated.HasValue, value.Emotion);
+        results.Record(emotion, value.ScoreOf(emotion), calibrated.HasValue, value.Emotion);
     }
 
     // The Quest pauses rather than quits when the headset is taken off; close the file so
@@ -605,5 +761,10 @@ public class NewFaceAuModel : MonoBehaviour
     {
         faceWorker.Dispose();
         results.Dispose();
+
+        if (defaultJevSettings != null)
+        {
+            Destroy(defaultJevSettings);
+        }
     }
 }

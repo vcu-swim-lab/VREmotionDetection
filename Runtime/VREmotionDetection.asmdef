@@ -5,7 +5,8 @@
         "GUID:63a57c8b658089e49a173b0f0c4870a7",
         "GUID:f68571b73246ce44e903d7128579af58",
         "GUID:f64c9ebcd7899c3448a08dc9f9ddbe30",
-        "GUID:7512557db6354b84e8a34ed70c18a6e7"
+        "GUID:7512557db6354b84e8a34ed70c18a6e7",
+        "Unity.Nuget.Newtonsoft-Json"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

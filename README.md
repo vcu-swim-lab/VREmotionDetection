@@ -122,7 +122,66 @@ A full example is in [`Samples~/MovementCalibration`](./Samples~/MovementCalibra
 
 **Check it on your headset:** the [`Samples~/CalibrationCheck`](./Samples~/CalibrationCheck/CalibrationCheck.cs)
 sample calibrates, then asks for each face again and reports the uncalibrated and the calibrated
-answer for the same predictions, with your own Quest Pro face data.
+answer for the same predictions, with your own Quest Pro face data. With the local backend and a Jev
+Settings asset assigned on the predictor (see below), it adds Jev's answer for the same face data as a
+third column.
+
+
+## 🌐 Jev backend (optional)
+
+Instead of the bundled model, the predictor can ask [Typesafe's Jev model](https://docs.typesafe.ai)
+over the network. The API is identical, so `Predict`, `PredictDetailed` and every sample work
+unchanged. It is **off by default**: the predictor runs the local model unless you change the backend.
+
+1. Get your own API key at [console.typesafe.ai/keys](https://console.typesafe.ai/keys). The library
+   does not provide one, and you should never write it into source code.
+2. **`Assets > Create > VR Emotion > Jev Settings`**, and paste the key into the new asset (keep the
+   asset out of version control). Alternatively leave **Jev Settings** empty on the predictor and set
+   the `TYPESAFE_API_KEY` environment variable (Editor and desktop only, a headset build has none), or
+   set it from code with `settings.ApiKey = "..."`.
+3. On the **New Face Au Model** component, set **Backend** to **Jev**.
+4. For Quest builds, set **Player Settings > Other Settings > Internet Access** to **Require**.
+
+```csharp
+predictor.Backend = PredictionBackend.Jev;
+predictor.JevSettings = settings;                          // optional if TYPESAFE_API_KEY is set
+
+string problem = predictor.JevPreflight();                 // null when a key is available
+var (emotion, confidence) = await predictor.Predict();     // (Neutral, 0) if the call failed
+string error = predictor.JevError;                         // why it failed; null when it worked
+```
+
+**Confidence.** Jev answers each emotion separately, so its answers do not add up to 1. The winner is
+chosen from the answers divided by their sum, but the confidence is Jev's own answer for the winning
+emotion (`FacePrediction.Raw`, and `ScoreOf(emotion)`), because a lone weak answer would otherwise
+read as 1.0.
+
+**Calibration with Jev.** The calibration works the same way, on the answers of the selected backend.
+With Jev, `CalibrateEmotion` asks Jev about each calibration sample (about 70 requests in all), and
+the same nearest-centroid rule then maps Jev's answers to this player. Jev answers in steps of 0.01
+and often says 0.00, so a small floor is added to its scores before they enter the calibration. A
+calibration made with one backend is refused by the other (`LoadCalibration` says to calibrate
+again), and changing `Backend` clears the current calibration.
+
+Optionally, tick **Send Own Faces In Request** on the Jev Settings asset to also give Jev the player's
+own faces in every request: for each emotion, the cosine similarity between the current face and the
+player's face for that emotion, its rank, the player's most characteristic movements and how many
+are active now. These are calculated in code; Jev is not given raw calibration numbers.
+
+**Things to know:**
+- **Privacy.** Face-tracking data about the player leaves the device and goes to a third party.
+  Get the player's consent.
+- **A key in a shipped build can be extracted.** Do not embed it in code. For a public release, set
+  **Base Url** on the asset to your own server that adds the key and forwards the request to Typesafe.
+- **Failures are not hidden.** A missing key, no network or an API error gives `(Neutral, 0)` from
+  `Predict`, `null` from `PredictDetailed`, a message in `JevError`, one console warning per distinct
+  message, and a `jev_error` row in the results file. There is no fallback to the local model.
+- **Cost and speed.** Each prediction is one request with seven questions, billed per input token
+  (about $0.042 per million). It takes a network round trip, so ask less often than with the local
+  model. If the network is down, one call can take up to about 30 seconds (10 s timeout, two retries).
+- **Not proven to be better.** Run `Samples~/CalibrationCheck` with the backend set to Jev to compare
+  Jev uncalibrated with Jev calibrated, or with a Jev Settings asset assigned and the local backend
+  to compare Jev with the local model, on your own face data before relying on it.
 
 
 ## 📊 Results

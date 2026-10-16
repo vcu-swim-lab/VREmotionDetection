@@ -1,7 +1,22 @@
+using System.Collections.Generic;
 using Unity.InferenceEngine;
 
 internal static class Utils
 {
+    internal static int Argmax(IReadOnlyList<float> values)
+    {
+        int best = 0;
+        for (int i = 1; i < values.Count; ++i)
+        {
+            if (values[i] > values[best])
+            {
+                best = i;
+            }
+        }
+
+        return best;
+    }
+
     // Load a model asset, optionally appending a softmax to its first output.
     //
     // `appendSoftmax` is deliberately required: whether a graph needs it depends on

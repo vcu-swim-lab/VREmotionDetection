@@ -22,6 +22,7 @@ internal sealed class ResultsRecorder : IDisposable
     private readonly int[] counts = new int[Enum.GetValues(typeof(Emotion)).Length];
     private readonly double[] confidenceSums = new double[Enum.GetValues(typeof(Emotion)).Length];
     private int noTracking;
+    private int jevErrors;
 
     private StreamWriter writer;
     private DateTime? startedUtc;
@@ -51,13 +52,25 @@ internal sealed class ResultsRecorder : IDisposable
         Write(string.Join(",", Stamp(), "no_tracking", "", "", ""));
     }
 
+    // A prediction that the Jev backend could not answer (no key, no network, an API error).
+    public void RecordJevError()
+    {
+        jevErrors++;
+        Write(string.Join(",", Stamp(), "jev_error", "", "", ""));
+    }
+
     public string Summary()
     {
         int total = counts.Sum();
         if (total == 0)
         {
-            return noTracking > 0
-                ? "No emotions recorded: face tracking was not available."
+            if (noTracking > 0)
+            {
+                return "No emotions recorded: face tracking was not available.";
+            }
+
+            return jevErrors > 0
+                ? "No emotions recorded: Jev did not answer."
                 : "No emotions recorded yet.";
         }
 
@@ -78,7 +91,13 @@ internal sealed class ResultsRecorder : IDisposable
         if (noTracking > 0)
         {
             lines.Add(string.Format(inv, "No face tracking: {0} of {1} predictions",
-                                    noTracking, total + noTracking));
+                                    noTracking, total + noTracking + jevErrors));
+        }
+
+        if (jevErrors > 0)
+        {
+            lines.Add(string.Format(inv, "Jev did not answer: {0} of {1} predictions",
+                                    jevErrors, total + noTracking + jevErrors));
         }
 
         return string.Join("\n", lines);

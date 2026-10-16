@@ -1,7 +1,5 @@
 using UnityEngine;
 
-// Emotion predictions without calibration. Put this on the GameObject that has the
-// NewFaceAuModel component.
 [RequireComponent(typeof(NewFaceAuModel))]
 public class BasicPredictor : MonoBehaviour
 {
@@ -10,25 +8,27 @@ public class BasicPredictor : MonoBehaviour
     void Start()
     {
         predictor = GetComponent<NewFaceAuModel>();
-        _ = PredictLoop();
+
+        predictor.UseSparseVr();
+
+        _ = Run();
     }
 
-    private async Awaitable PredictLoop()
+    private async Awaitable Run()
     {
-        while (true)
+        while (!destroyCancellationToken.IsCancellationRequested)
         {
-            // The most likely emotion and its probability (0 to 1).
-            var (emotion, confidence) = await predictor.Predict();
-            Debug.Log($"{emotion} ({confidence:F2})");
+            PredictionOutcome outcome = await predictor.TryPredict();
 
-            // Or every detail: all seven probabilities, in Emotion order
-            // (Anger, Disgust, Fear, Happiness, Neutral, Sadness, Surprise).
-            // Null when face tracking gave no valid frames in time.
-            var detailed = await predictor.PredictDetailed();
-            if (detailed.HasValue)
+            if (outcome.Ok)
             {
-                float[] scores = detailed.Value.Scores;
-                Debug.Log($"Happiness probability: {scores[(int)Emotion.Happiness]:F2}");
+                FacePrediction prediction = outcome.Prediction;
+                Debug.Log($"{prediction.Emotion} ({prediction.Confidence:P0})");
+            }
+            else
+            {
+                Debug.LogWarning(outcome.Error.Value);
+                await Awaitable.WaitForSecondsAsync(1f);
             }
         }
     }

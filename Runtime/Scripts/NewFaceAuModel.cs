@@ -220,6 +220,7 @@ public class NewFaceAuModel : MonoBehaviour
     {
         if (!started || windowSource == null || sparseVr == null || busy)
         {
+            await Awaitable.NextFrameAsync();
             return null;
         }
 
@@ -300,21 +301,24 @@ public class NewFaceAuModel : MonoBehaviour
         }
 
         var session = calibrator;
-        var calibratingBackend = backend;
+        string calibratingBackendId = CurrentBackendId;
         session.BeginEmotion((int)emotion);
 
         for (int attempt = 0; !session.IsEmotionComplete((int)emotion); ++attempt)
         {
             if (attempt >= maxAttempts)
             {
+                calibrationError = $"could not collect enough samples for {emotion} in {maxAttempts} attempts: " +
+                                   "face tracking was lost or the backend kept failing (see LastError)";
                 return false;
             }
 
             float nextSample = Time.time + secondsBetweenSamples;
 
             var outcome = await PredictCore(DefaultTimeoutSeconds);
-            if (!ReferenceEquals(session, calibrator) || !ReferenceEquals(calibratingBackend, backend))
+            if (!ReferenceEquals(session, calibrator) || calibratingBackendId != CurrentBackendId)
             {
+                calibrationError = "the calibration was cleared or the backend changed while it was running";
                 return false;
             }
 
@@ -347,6 +351,12 @@ public class NewFaceAuModel : MonoBehaviour
             if (prompt != null)
             {
                 await prompt(emotion);
+            }
+
+            if (calibrator == null)
+            {
+                calibrationError = "the calibration was cleared or the backend changed while it was running";
+                return false;
             }
 
             if (!await CalibrateEmotion(emotion, secondsBetweenSamples, maxAttempts))
@@ -618,6 +628,11 @@ public class NewFaceAuModel : MonoBehaviour
             if (!ScoreValidation.TryValidate(result.Scores, ClassNames.Length, out string problem))
             {
                 return Fail(PredictionErrorCode.InvalidResponse, problem, active.Id);
+            }
+
+            if (result.Raw != null && !ScoreValidation.TryValidate(result.Raw, ClassNames.Length, out problem))
+            {
+                return Fail(PredictionErrorCode.InvalidResponse, "raw " + problem, active.Id);
             }
 
             int best = ScoreValidation.Argmax(result.Scores);

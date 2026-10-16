@@ -16,7 +16,6 @@ internal sealed class ResultsRecorder : IDisposable
 
     private readonly int[] counts = new int[Enum.GetValues(typeof(Emotion)).Length];
     private readonly double[] confidenceSums = new double[Enum.GetValues(typeof(Emotion)).Length];
-    private readonly string folderOverride;
     private readonly Stopwatch sessionClock = new Stopwatch();
 
     private int noTracking;
@@ -25,11 +24,6 @@ internal sealed class ResultsRecorder : IDisposable
     private DateTime? startedUtc;
     private bool headerWritten;
     private bool disposed;
-
-    public ResultsRecorder(string folder = null)
-    {
-        folderOverride = folder;
-    }
 
     public string FilePath { get; private set; }
 
@@ -58,6 +52,7 @@ internal sealed class ResultsRecorder : IDisposable
                 Write(string.Join(",", Stamp(), "no_tracking", "", "", ""));
                 break;
             case PredictionErrorCode.NotReady:
+            case PredictionErrorCode.NotConfigured:
             case PredictionErrorCode.Busy:
                 break;
             default:
@@ -167,7 +162,7 @@ internal sealed class ResultsRecorder : IDisposable
 
     private string ReservePath()
     {
-        string folder = folderOverride ?? Folder;
+        string folder = Folder;
         Directory.CreateDirectory(folder);
 
         string stem = "session_" + startedUtc.Value.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);

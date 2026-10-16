@@ -29,7 +29,7 @@ public class CalibrationCheck : MonoBehaviour
         {
             return predictor.CreateJevBackend(JevOptions.FromEnvironment());
         }
-        catch (InvalidOperationException)
+        catch (Exception e) when (e is InvalidOperationException || e is ArgumentException)
         {
             return null;
         }

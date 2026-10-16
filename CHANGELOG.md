@@ -17,7 +17,7 @@
 - `DeviceManager` creates devices on request; the microphone is no longer started at start-up.
 - Concurrent predictions return `Busy`; invalid arguments throw; calibration calls are no-ops when calibration is off.
 - The headset results menu reports the files it copied and refuses to guess between several devices.
-- `package.json` completed (Unity 6, keywords, links, module dependencies).
+- `package.json` completed (Unity 6, keywords, links, and the `jsonserialize` and `unitywebrequest` module dependencies; no Audio module dependency is declared, as in 2.1).
 - All source comments moved into the documentation.
 
 ### Fixed

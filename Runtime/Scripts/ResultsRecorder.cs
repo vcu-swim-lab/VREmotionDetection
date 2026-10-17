@@ -55,6 +55,7 @@ namespace VcuSwimLab.VREmotionDetection
                     break;
                 case PredictionErrorCode.NotReady:
                 case PredictionErrorCode.NotConfigured:
+            case PredictionErrorCode.Canceled:
                 case PredictionErrorCode.Busy:
                     break;
                 default:

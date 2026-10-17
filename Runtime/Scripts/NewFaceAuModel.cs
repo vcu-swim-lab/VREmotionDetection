@@ -64,7 +64,8 @@ namespace VcuSwimLab.VREmotionDetection
         private PredictionError? lastError;
         private string lastLoggedError;
         private bool started;
-        private bool busy;
+        private object busyOwner;
+        private int epoch;
 
         public event Action<PredictionError> PredictionFailed;
 
@@ -111,6 +112,8 @@ namespace VcuSwimLab.VREmotionDetection
 
         void OnDisable()
         {
+            var leaving = backend;
+            EndSession();
             windowSource?.Dispose();
             windowSource = null;
 
@@ -126,15 +129,21 @@ namespace VcuSwimLab.VREmotionDetection
             }
 
             results.Close();
+            CancelPending(leaving);
         }
 
         void OnDestroy()
         {
+            EndSession();
+            CancelPending(backend);
+
             if (backend != null && !ReferenceEquals(backend, sparseVr))
             {
                 backend.Dispose();
             }
 
+            sparseVr?.Dispose();
+            sparseVr = null;
             backend = null;
             results.Dispose();
         }
@@ -220,21 +229,40 @@ namespace VcuSwimLab.VREmotionDetection
 
         public async Awaitable<Tensor<float>> PredictRaw()
         {
-            if (!started || windowSource == null || sparseVr == null || busy)
+            var source = windowSource;
+            var local = sparseVr;
+            if (!started || source == null || local == null || busyOwner != null)
             {
                 await Awaitable.NextFrameAsync();
                 return null;
             }
 
-            busy = true;
+            int operation = epoch;
+            var owner = new object();
+            busyOwner = owner;
             try
             {
-                var window = await windowSource.AwaitWindowAsync(DefaultTimeoutSeconds);
-                return window == null ? null : await sparseVr.ScoreRawAsync(window);
+                var window = await source.AwaitWindowAsync(DefaultTimeoutSeconds);
+                if (window == null || operation != epoch)
+                {
+                    return null;
+                }
+
+                var tensor = await local.ScoreRawAsync(window);
+                if (operation == epoch)
+                {
+                    return tensor;
+                }
+
+                tensor?.Dispose();
+                return null;
             }
             finally
             {
-                busy = false;
+                if (ReferenceEquals(busyOwner, owner))
+                {
+                    busyOwner = null;
+                }
             }
         }
 
@@ -302,8 +330,75 @@ namespace VcuSwimLab.VREmotionDetection
                 throw new ArgumentOutOfRangeException(nameof(maxAttempts), maxAttempts, "must be 1 or more");
             }
 
-            var session = calibrator;
-            string calibratingBackendId = CurrentBackendId;
+            return await CollectEmotion(emotion, secondsBetweenSamples, maxAttempts, StartRun());
+        }
+
+        public async Awaitable<bool> CalibrateAll(Func<Emotion, Awaitable> prompt = null,
+                                                  float secondsBetweenSamples = 1f, int maxAttempts = 20)
+        {
+            StartCalibration();
+            if (!useCalibration)
+            {
+                return false;
+            }
+
+            var run = StartRun();
+            foreach (Emotion emotion in Enum.GetValues(typeof(Emotion)))
+            {
+                if (prompt != null)
+                {
+                    await prompt(emotion);
+                }
+
+                if (Interrupted(run))
+                {
+                    return Abandon(run);
+                }
+
+                if (!await CollectEmotion(emotion, secondsBetweenSamples, maxAttempts, run))
+                {
+                    return false;
+                }
+            }
+
+            return FinishCalibration();
+        }
+
+        private sealed class CalibrationRun
+        {
+            public MovementCalibrator Session;
+            public string BackendId;
+            public int? Epoch;
+        }
+
+        private bool Ready => started && windowSource != null && backend != null;
+
+        private CalibrationRun StartRun()
+        {
+            return new CalibrationRun { Session = calibrator, BackendId = CurrentBackendId, Epoch = Ready ? epoch : (int?)null };
+        }
+
+        private bool Interrupted(CalibrationRun run)
+        {
+            return !ReferenceEquals(run.Session, calibrator)
+                   || run.BackendId != CurrentBackendId
+                   || (run.Epoch.HasValue && run.Epoch.Value != epoch);
+        }
+
+        private bool Abandon(CalibrationRun run)
+        {
+            if (calibrator == null || ReferenceEquals(run.Session, calibrator))
+            {
+                calibrationError = "the calibration was interrupted: it was cleared, the backend changed or the predictor was disabled";
+            }
+
+            return false;
+        }
+
+        private async Awaitable<bool> CollectEmotion(Emotion emotion, float secondsBetweenSamples, int maxAttempts,
+                                                     CalibrationRun run)
+        {
+            var session = run.Session;
             session.BeginEmotion((int)emotion);
 
             for (int attempt = 0; !session.IsEmotionComplete((int)emotion); ++attempt)
@@ -318,10 +413,10 @@ namespace VcuSwimLab.VREmotionDetection
                 float nextSample = Time.time + secondsBetweenSamples;
 
                 var outcome = await PredictCore(DefaultTimeoutSeconds);
-                if (!ReferenceEquals(session, calibrator) || calibratingBackendId != CurrentBackendId)
+                run.Epoch ??= epoch;
+                if (Interrupted(run))
                 {
-                    calibrationError = "the calibration was cleared or the backend changed while it was running";
-                    return false;
+                    return Abandon(run);
                 }
 
                 if (outcome.Ok)
@@ -333,41 +428,14 @@ namespace VcuSwimLab.VREmotionDetection
                 if (remaining > 0)
                 {
                     await Awaitable.WaitForSecondsAsync(remaining);
+                    if (Interrupted(run))
+                    {
+                        return Abandon(run);
+                    }
                 }
             }
 
             return true;
-        }
-
-        public async Awaitable<bool> CalibrateAll(Func<Emotion, Awaitable> prompt = null,
-                                                  float secondsBetweenSamples = 1f, int maxAttempts = 20)
-        {
-            StartCalibration();
-            if (!useCalibration)
-            {
-                return false;
-            }
-
-            foreach (Emotion emotion in Enum.GetValues(typeof(Emotion)))
-            {
-                if (prompt != null)
-                {
-                    await prompt(emotion);
-                }
-
-                if (calibrator == null)
-                {
-                    calibrationError = "the calibration was cleared or the backend changed while it was running";
-                    return false;
-                }
-
-                if (!await CalibrateEmotion(emotion, secondsBetweenSamples, maxAttempts))
-                {
-                    return false;
-                }
-            }
-
-            return FinishCalibration();
         }
 
         public bool FinishCalibration()
@@ -528,6 +596,7 @@ namespace VcuSwimLab.VREmotionDetection
             }
 
             var previous = backend;
+            EndSession();
             backend = next;
             if (calibrationBackendId != next.Id)
             {
@@ -537,9 +606,28 @@ namespace VcuSwimLab.VREmotionDetection
             lastError = null;
             lastLoggedError = null;
 
+            CancelPending(previous);
             if (previous != null && !ReferenceEquals(previous, sparseVr))
             {
                 previous.Dispose();
+            }
+        }
+
+        private void EndSession()
+        {
+            epoch++;
+            busyOwner = null;
+        }
+
+        private static void CancelPending(IEmotionBackend leaving)
+        {
+            try
+            {
+                (leaving as ICancelableBackend)?.CancelPending();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"{nameof(NewFaceAuModel)}: CancelPending threw ({e.GetType().Name}: {e.Message}).");
             }
         }
 
@@ -586,21 +674,35 @@ namespace VcuSwimLab.VREmotionDetection
 
             if (active == null)
             {
+                int waiting = epoch;
                 await Awaitable.NextFrameAsync();
-                return Fail(PredictionErrorCode.NotConfigured,
-                            "no backend is selected: assign a face model, or call UseJev or UseBackend", null);
+                return waiting != epoch
+                    ? Abandoned(null)
+                    : Fail(PredictionErrorCode.NotConfigured,
+                           "no backend is selected: assign a face model, or call UseJev or UseBackend", null);
             }
 
-            if (busy)
+            if (busyOwner != null)
             {
+                int waiting = epoch;
                 await Awaitable.NextFrameAsync();
-                return Fail(PredictionErrorCode.Busy, "another prediction is already running", active.Id);
+                return waiting != epoch
+                    ? Abandoned(active.Id)
+                    : Fail(PredictionErrorCode.Busy, "another prediction is already running", active.Id);
             }
 
-            busy = true;
+            int operation = epoch;
+            var source = windowSource;
+            var owner = new object();
+            busyOwner = owner;
             try
             {
-                var window = await windowSource.AwaitWindowAsync(timeoutSeconds);
+                var window = await source.AwaitWindowAsync(timeoutSeconds);
+                if (operation != epoch)
+                {
+                    return Abandoned(active.Id);
+                }
+
                 if (window == null)
                 {
                     return Fail(PredictionErrorCode.NoTracking,
@@ -608,7 +710,7 @@ namespace VcuSwimLab.VREmotionDetection
                                 "face tracking is probably unavailable", active.Id);
                 }
 
-                long generation = windowSource.Generation;
+                long generation = source.Generation;
 
                 BackendResult result;
                 try
@@ -617,11 +719,23 @@ namespace VcuSwimLab.VREmotionDetection
                 }
                 catch (Exception e)
                 {
-                    return Fail(PredictionErrorCode.Internal, $"{e.GetType().Name}: {e.Message}", active.Id);
+                    return operation != epoch
+                        ? Abandoned(active.Id)
+                        : Fail(PredictionErrorCode.Internal, $"{e.GetType().Name}: {e.Message}", active.Id);
+                }
+
+                if (operation != epoch)
+                {
+                    return Abandoned(active.Id);
                 }
 
                 if (!result.Ok)
                 {
+                    if (result.Error.HasValue && result.Error.Value.Code == PredictionErrorCode.Canceled)
+                    {
+                        return Abandoned(active.Id);
+                    }
+
                     return result.Error.HasValue
                         ? Report(PredictionOutcome.Failure(result.Error.Value))
                         : Fail(PredictionErrorCode.InvalidResponse, "the backend returned neither scores nor an error", active.Id);
@@ -645,8 +759,19 @@ namespace VcuSwimLab.VREmotionDetection
             }
             finally
             {
-                busy = false;
+                if (ReferenceEquals(busyOwner, owner))
+                {
+                    busyOwner = null;
+                }
             }
+        }
+
+        private static PredictionOutcome Abandoned(string backendId)
+        {
+            return PredictionOutcome.Failure(new PredictionError(
+                PredictionErrorCode.Canceled,
+                "the prediction was canceled because the backend changed or the predictor was disabled",
+                backendId));
         }
 
         private PredictionOutcome Fail(PredictionErrorCode code, string message, string backendId)

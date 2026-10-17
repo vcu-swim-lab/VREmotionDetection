@@ -44,6 +44,8 @@ namespace VcuSwimLab.Backends.Jev
 
         public bool LogRequests { get; set; }
 
+        public bool IncludeServerDetails { get; set; }
+
         public static JevOptions FromEnvironment()
         {
             string key = Environment.GetEnvironmentVariable(ApiKeyVariable);

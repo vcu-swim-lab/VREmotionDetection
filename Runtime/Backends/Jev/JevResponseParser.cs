@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
@@ -8,11 +9,10 @@ namespace VcuSwimLab.Backends.Jev
 {
     internal static class JevResponseParser
     {
-        private const int MaxDetailLength = 200;
-
         private static readonly Dictionary<long, string> StatusReasons = new()
         {
             [0] = "no response from Typesafe",
+            [408] = "the request to Typesafe timed out",
             [401] = "the Typesafe API key is missing or invalid",
             [422] = "Typesafe rejected the request",
             [429] = "the Typesafe rate limit was exceeded",
@@ -41,8 +41,17 @@ namespace VcuSwimLab.Backends.Jev
                     return false;
                 }
 
-                values[e] = token.Value<double>();
-                if (double.IsNaN(values[e]) || double.IsInfinity(values[e]) || values[e] < 0.0)
+                try
+                {
+                    values[e] = token.Value<double>();
+                }
+                catch (Exception)
+                {
+                    error = $"Typesafe gave an invalid answer for {classNames[e]}";
+                    return false;
+                }
+
+                if (double.IsNaN(values[e]) || double.IsInfinity(values[e]) || values[e] < 0.0 || values[e] > 1.0)
                 {
                     error = $"Typesafe gave an invalid answer for {classNames[e]}";
                     return false;
@@ -73,10 +82,15 @@ namespace VcuSwimLab.Backends.Jev
             return PredictionErrorCode.InvalidResponse;
         }
 
-        public static string FailureMessage(long statusCode, string body)
+        public static string FailureMessage(long statusCode, string body, string apiKey, bool includeServerDetails)
         {
             string reason = StatusReasons.TryGetValue(statusCode, out var known) ? known : $"Typesafe answered HTTP {statusCode}";
-            string detail = Detail(body);
+            if (statusCode != 0 && !includeServerDetails)
+            {
+                return reason;
+            }
+
+            string detail = JevText.Sanitize(Detail(body), apiKey);
             return string.IsNullOrEmpty(detail) ? reason : $"{reason}: {detail}";
         }
 
@@ -87,11 +101,9 @@ namespace VcuSwimLab.Backends.Jev
                 return null;
             }
 
-            string text = TryParseObject(body, out var root)
+            return TryParseObject(body, out var root)
                 ? Text(root["error"]) ?? Text(root["message"]) ?? Text(root["detail"])
-                : body.Trim();
-
-            return text != null && text.Length > MaxDetailLength ? text.Substring(0, MaxDetailLength) : text;
+                : body;
         }
 
         private static string Text(JToken token)

@@ -9,6 +9,8 @@ namespace VcuSwimLab.VREmotionDetection
         private readonly Device device;
         private readonly Device.PollDelegate handler;
 
+        private bool disposed;
+
         internal FaceWindowSource(Device device, int frames, int features)
         {
             this.device = device ?? throw new ArgumentNullException(nameof(device));
@@ -27,7 +29,7 @@ namespace VcuSwimLab.VREmotionDetection
 
             while (!buffer.Full)
             {
-                if (Time.realtimeSinceStartup >= deadline)
+                if (disposed || Time.realtimeSinceStartup >= deadline)
                 {
                     return null;
                 }
@@ -40,6 +42,7 @@ namespace VcuSwimLab.VREmotionDetection
 
         public void Dispose()
         {
+            disposed = true;
             device.OnPoll -= handler;
         }
     }

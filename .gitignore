@@ -104,3 +104,4 @@ InitTestScene*.unity*
 
 # Lab-internal release guide, not part of the package
 /PUBLISHING_GUIDE.md.pdf
+/LIBRARY_ISSUE_REPORT.md

@@ -40,7 +40,9 @@ The existing public types (`NewFaceAuModel`, `FacePrediction`, `Emotion`, `Devic
 
 At most one prediction runs at a time per `NewFaceAuModel`. A second concurrent call returns a `Busy` error instead of corrupting the first one's window.
 
+A prediction belongs to the backend and the enabled state that started it. If you switch backend or disable the component while it waits (for frames or for a backend), it ends with `Canceled`: its answer is dropped, nothing is recorded, and `LastError` and `PredictionFailed` are untouched. A backend that implements `ICancelableBackend` (Jev does) also stops its in-flight request and retries. Switching releases the busy state at once, so the next call is not blocked by the old one.
+
 ## Extension points
 
 - A new model: implement `IEmotionBackend` and pass it to `UseBackend` (see [Backends](Backends.md)).
-- A different network layer (a proxy, a test double): implement `IHttpTransport` and pass it to `JevBackend`.
+- A different network layer (a proxy, a test double): implement `IHttpTransport` and pass it to `JevBackend`. Implement `ICancelableHttpTransport` as well to let a cancel abort the request.

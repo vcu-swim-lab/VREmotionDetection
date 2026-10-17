@@ -228,7 +228,9 @@ Good to know:
   `async void Start()` or `async Awaitable`, as in the recipes. Do not block with `.Wait()`.
 * Your script's `Start` may run before the predictor's `Start`. That is fine: the first prediction
   waits one frame for it, and the calibration calls above work before it too.
-* One prediction at a time. A second call while one is running returns a `Busy` error.
+* One prediction at a time. A second call while one is running returns a `Busy` error. A call that is
+  still waiting when you switch backend or disable the component ends with `Canceled` instead of an
+  answer from the old session.
 * When a call fails, **wait before trying again** (the recipes use `WaitForSecondsAsync`). Otherwise
   a wrong Jev key would send a request every frame.
 
@@ -768,6 +770,7 @@ because it becomes a file name.
 | `ServerError` | the service failed | try later; transient |
 | `InvalidResponse` | the answer could not be used | wrong number of scores, NaN, or a malformed reply |
 | `Internal` | an unexpected exception | a bug in a backend; the message names it |
+| `Canceled` | the backend changed, or the predictor was disabled or destroyed, while this call was waiting | call again; the old answer is dropped and nothing is recorded or reported |
 
 ### Smaller types
 
@@ -822,6 +825,7 @@ options.TimeoutSeconds = 10;                       // per attempt
 options.MaxRetries = 2;                            // transient failures only
 options.SendOwnFacesInRequest = false;             // default
 options.LogRequests = false;                       // true: one Console line per request
+options.IncludeServerDetails = false;              // true: add Typesafe's own error text to messages
 predictor.UseJev(options);
 ```
 
@@ -834,21 +838,26 @@ predictor.UseJev(options);
 | `MaxRetries` | 2 | 0 to 5 |
 | `SendOwnFacesInRequest` | `false` | also sends the player's calibration summary |
 | `LogRequests` | `false` | writes one Console line for every request the package sends |
+| `IncludeServerDetails` | `false` | also puts the service's own error text into error messages and the `[Jev]` line, cleaned of keys and cut to 200 characters |
 
-* **Your key.** The package never ships, stores or logs a key, and it is never written into a
-  Unity asset. `JevOptions.FromEnvironment()` reads `TYPESAFE_API_KEY` (Editor and desktop only).
+* **Your key.** The package never ships or stores a key, never writes one itself, and never puts one
+  into a Unity asset. If a server echoes it back, it is removed from any text the package shows. `JevOptions.FromEnvironment()` reads `TYPESAFE_API_KEY` (Editor and desktop only).
   **A key inside a shipped build can be extracted**: for a public release, set `BaseUrl` to your
   own server, which adds the key and forwards the request to Typesafe.
 * **What is sent:** a short description of the face (strongest movements, as words) and, with
   `SendOwnFacesInRequest`, how similar the face is to each of this player's calibrated faces. The
   player's face data leaves the device: **get their consent**.
+* **Error text:** by default an error only says what happened ("Typesafe rejected the request") and
+  never copies the service's reply into your logs or events. Set `IncludeServerDetails = true` while
+  debugging to add that text; it is cleaned (your key, `Bearer` and `Authorization` values removed, control
+  characters replaced by spaces) and cut to 200 characters. Never rely on this to hide face data.
 * **Speed:** each prediction is one request. If the network is down, a failing call can take about
   30 seconds with the defaults (three tries of up to 10 s); lower `TimeoutSeconds` or `MaxRetries`
   if you need a faster verdict.
 * **Cost:** Typesafe bills per input token (about $0.042 per million at the time of writing).
 
 **Seeing the requests.** With `options.LogRequests = true` every request leaves one Console line.
-The key and the face data are never printed:
+The key and the face data are not printed:
 
 ```
 [Jev] POST https://api.typesafe.ai/v1/systemone -> 200 in 412 ms (attempt 1 of 3)
@@ -958,6 +967,7 @@ inside calibrations, so change it when a change would make old calibrations mean
 | Calibration calls seem to do nothing | **Use Calibration** is off | set `UseCalibration = true` *before* loading or starting |
 | `ArgumentException` about `playerId` | a space, slash or other character | use letters, digits, `-` and `_` only |
 | `Busy` | two predictions at once | call from one loop; await each call |
+| `Canceled` | you switched backend or disabled the component during a call | expected; call again. `Predict()` returns `(Neutral, 0)` for it with `LastError` still empty: use `TryPredict` when your code switches backends while predicting |
 | No results file | **Save Results** is off, or no prediction yet | tick it; check `ResultsFilePath` |
 | The game freezes in a prediction loop | a loop that retries instantly after a failure | wait after failures, as in the recipes |
 

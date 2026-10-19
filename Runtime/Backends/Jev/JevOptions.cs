@@ -42,6 +42,10 @@ namespace VcuSwimLab.Backends.Jev
 
         public bool SendOwnFacesInRequest { get; set; }
 
+        public bool LogRequests { get; set; }
+
+        public bool IncludeServerDetails { get; set; }
+
         public static JevOptions FromEnvironment()
         {
             string key = Environment.GetEnvironmentVariable(ApiKeyVariable);
@@ -57,13 +61,21 @@ namespace VcuSwimLab.Backends.Jev
         {
             var problems = new List<string>();
 
-            if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out Uri uri))
+            if (!Uri.TryCreate(BaseUrl?.Trim(), UriKind.Absolute, out Uri uri))
             {
                 problems.Add("BaseUrl must be an absolute URL");
             }
-            else if (uri.Scheme != Uri.UriSchemeHttps && !(uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback))
+            else
             {
-                problems.Add("BaseUrl must use https (http is accepted only for localhost)");
+                if (uri.Scheme != Uri.UriSchemeHttps && !(uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback))
+                {
+                    problems.Add("BaseUrl must use https (http is accepted only for localhost)");
+                }
+
+                if (uri.UserInfo.Length > 0 || uri.Query.Length > 0 || uri.Fragment.Length > 0)
+                {
+                    problems.Add("BaseUrl must not contain credentials, a query or a fragment");
+                }
             }
 
             if (string.IsNullOrWhiteSpace(Model))

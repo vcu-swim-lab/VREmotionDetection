@@ -9,6 +9,6 @@
 | [Diagnostics](Diagnostics.md) | handle errors, read the error codes, understand the logging |
 | [Data formats](DataFormats.md) | read the model input and output, results CSV and calibration file |
 | [Design notes](DesignNotes.md) | learn why things are the way they are |
-| [Migration](Migration.md) | move from 2.1 to 2.2 |
+| [Migration](Migration.md) | move from 2.1 to 3.0 |
 
-The package README has the quick start.
+The package README has the quick start. All types are in the namespace `VcuSwimLab.VREmotionDetection`: add `using VcuSwimLab.VREmotionDetection;` to your scripts.

@@ -16,5 +16,6 @@ namespace VcuSwimLab.Backends
         ServerError,
         InvalidResponse,
         Internal,
+        Canceled,
     }
 }

@@ -7,116 +7,119 @@ using System.Collections.Generic;
 
 using Debug = UnityEngine.Debug;
 
-[System.Obsolete("Use NewFaceAuModel, which runs the acted-data model and supports calibration.")]
-[RequireComponent(typeof(OVRFaceExpressions))]
-[RequireComponent(typeof(DeviceManager))]
-public class FaceAuModel : MonoBehaviour
+namespace VcuSwimLab.VREmotionDetection
 {
-    [SerializeField]
-    private ModelAsset naturalModel;
-    [SerializeField]
-    private ModelAsset actedModel;
-
-    private Model naturalModelObject;
-    private Model actedModelObject;
-
-    private Worker naturalWorker;
-    private Worker actedWorker;
-
-    private RingBuffer<float[]> inputBuffer;
-
-    public void Start()
+    [System.Obsolete("Use NewFaceAuModel, which runs the acted-data model and supports calibration.")]
+    [RequireComponent(typeof(OVRFaceExpressions))]
+    [RequireComponent(typeof(DeviceManager))]
+    public class FaceAuModel : MonoBehaviour
     {
-        if (naturalModel == null) Debug.LogError($"Natural model not assigned in {GetType().Name}");
-        if (actedModel == null) Debug.LogError($"Acted model not assigned in {GetType().Name}");
+        [SerializeField]
+        private ModelAsset naturalModel;
+        [SerializeField]
+        private ModelAsset actedModel;
 
-        naturalModelObject = OnnxModelLoader.Prepare(naturalModel, appendSoftmax: false);
-        naturalWorker = new Worker(naturalModelObject, BackendType.GPUCompute);
+        private Model naturalModelObject;
+        private Model actedModelObject;
 
-        actedModelObject = OnnxModelLoader.Prepare(actedModel, appendSoftmax: false);
-        actedWorker = new Worker(actedModelObject, BackendType.GPUCompute);
+        private Worker naturalWorker;
+        private Worker actedWorker;
 
-        var deviceManager = GetComponent<DeviceManager>();
+        private RingBuffer<float[]> inputBuffer;
 
-        var auDevice = deviceManager.Require(InputType.FaceAU);
-        if (auDevice == null)
+        public void Start()
         {
-            Debug.LogError("Could not create action units device!");
-        }
+            if (naturalModel == null) Debug.LogError($"Natural model not assigned in {GetType().Name}");
+            if (actedModel == null) Debug.LogError($"Acted model not assigned in {GetType().Name}");
 
-        inputBuffer = new(5, () => new float[70]);
-        inputBuffer.Listen(auDevice);
+            naturalModelObject = OnnxModelLoader.Prepare(naturalModel, appendSoftmax: false);
+            naturalWorker = new Worker(naturalModelObject, BackendType.GPUCompute);
 
-        Debug.Log("FaceAuModel initialized.");
-    }
+            actedModelObject = OnnxModelLoader.Prepare(actedModel, appendSoftmax: false);
+            actedWorker = new Worker(actedModelObject, BackendType.GPUCompute);
 
-    async Awaitable<(Tensor<float>, Tensor<float>)> Infer(Tensor<float> input)
-    {
-        naturalWorker.Schedule(input);
-        actedWorker.Schedule(input);
+            var deviceManager = GetComponent<DeviceManager>();
 
-        var naturalTensor = await naturalWorker.PeekOutput().ReadbackAndCloneAsync();
-        var actedTensor = await actedWorker.PeekOutput().ReadbackAndCloneAsync();
-        return (
-            naturalTensor as Tensor<float>,
-            actedTensor as Tensor<float>
-        );
-    }
-
-    public async Awaitable<(Tensor<float>, Tensor<float>)> PredictRaw()
-    {
-        inputBuffer.Clear();
-
-        while (!inputBuffer.Full)
-        {
-            await Awaitable.NextFrameAsync();
-        }
-
-        var input = inputBuffer.ToTensor();
-
-        return await Infer(input);
-    }
-
-    private static readonly Dictionary<Emotion, float> naturalWeightMap = new()
-    {
-        { Emotion.Neutral, 0.5f },
-        { Emotion.Happiness, 0.3f },
-        { Emotion.Sadness, 0.7f },
-        { Emotion.Anger, 0.5f },
-        { Emotion.Fear, 0.5f },
-        { Emotion.Disgust, 1f },
-        { Emotion.Surprise, 0.3f },
-    };
-    public async Awaitable<(Emotion, float)> Predict()
-    {
-        var (nat, act) = await PredictRaw();
-        var natArr = nat.AsReadOnlyNativeArray();
-        var actArr = act.AsReadOnlyNativeArray();
-
-        var outputArray = new NativeArray<float>(natArr.Length, Allocator.Temp);
-        for (int i = 0; i < natArr.Length; ++i)
-            outputArray[i] = natArr[i] * naturalWeightMap[(Emotion)i] + actArr[i] * (1f - naturalWeightMap[(Emotion)i]);
-
-        int maxIndex = 0;
-        float maxValue = outputArray[0];
-        for (int i = 1; i < outputArray.Length; ++i)
-        {
-            if (outputArray[i] > maxValue)
+            var auDevice = deviceManager.Require(InputType.FaceAU);
+            if (auDevice == null)
             {
-                maxValue = outputArray[i];
-                maxIndex = i;
+                Debug.LogError("Could not create action units device!");
             }
+
+            inputBuffer = new(5, () => new float[70]);
+            inputBuffer.Listen(auDevice);
+
+            Debug.Log("FaceAuModel initialized.");
         }
 
-        nat.Dispose();
-        act.Dispose();
+        async Awaitable<(Tensor<float>, Tensor<float>)> Infer(Tensor<float> input)
+        {
+            naturalWorker.Schedule(input);
+            actedWorker.Schedule(input);
 
-        return ((Emotion)maxIndex, maxValue);
-    }
+            var naturalTensor = await naturalWorker.PeekOutput().ReadbackAndCloneAsync();
+            var actedTensor = await actedWorker.PeekOutput().ReadbackAndCloneAsync();
+            return (
+                naturalTensor as Tensor<float>,
+                actedTensor as Tensor<float>
+            );
+        }
 
-    void OnDisable()
-    {
-        naturalWorker?.Dispose();
-        actedWorker?.Dispose();
+        public async Awaitable<(Tensor<float>, Tensor<float>)> PredictRaw()
+        {
+            inputBuffer.Clear();
+
+            while (!inputBuffer.Full)
+            {
+                await Awaitable.NextFrameAsync();
+            }
+
+            var input = inputBuffer.ToTensor();
+
+            return await Infer(input);
+        }
+
+        private static readonly Dictionary<Emotion, float> naturalWeightMap = new()
+        {
+            { Emotion.Neutral, 0.5f },
+            { Emotion.Happiness, 0.3f },
+            { Emotion.Sadness, 0.7f },
+            { Emotion.Anger, 0.5f },
+            { Emotion.Fear, 0.5f },
+            { Emotion.Disgust, 1f },
+            { Emotion.Surprise, 0.3f },
+        };
+        public async Awaitable<(Emotion, float)> Predict()
+        {
+            var (nat, act) = await PredictRaw();
+            var natArr = nat.AsReadOnlyNativeArray();
+            var actArr = act.AsReadOnlyNativeArray();
+
+            var outputArray = new NativeArray<float>(natArr.Length, Allocator.Temp);
+            for (int i = 0; i < natArr.Length; ++i)
+                outputArray[i] = natArr[i] * naturalWeightMap[(Emotion)i] + actArr[i] * (1f - naturalWeightMap[(Emotion)i]);
+
+            int maxIndex = 0;
+            float maxValue = outputArray[0];
+            for (int i = 1; i < outputArray.Length; ++i)
+            {
+                if (outputArray[i] > maxValue)
+                {
+                    maxValue = outputArray[i];
+                    maxIndex = i;
+                }
+            }
+
+            nat.Dispose();
+            act.Dispose();
+
+            return ((Emotion)maxIndex, maxValue);
+        }
+
+        void OnDisable()
+        {
+            naturalWorker?.Dispose();
+            actedWorker?.Dispose();
+        }
     }
 }

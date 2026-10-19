@@ -1,8 +1,18 @@
-# Migrating from 2.1 to 2.2
+# Migrating from 2.1 to 3.0
+
+## The one breaking change
+
+Every public type of the package is now in the namespace `VcuSwimLab.VREmotionDetection`. Add this line to each script that uses `NewFaceAuModel`, `Emotion`, `FacePrediction`, `PredictionOutcome`, `DeviceManager` or the other runtime types:
+
+```csharp
+using VcuSwimLab.VREmotionDetection;
+```
+
+Nothing else changes: class names, serialized fields, script GUIDs and the saved files stay the same, so scenes and prefabs keep working (Unity finds scripts by GUID). The backend, Jev and calibration types were already in their own `VcuSwimLab.*` namespaces. Only code that looks a type up by its bare name as a string, such as `Type.GetType("NewFaceAuModel")`, needs the full name `VcuSwimLab.VREmotionDetection.NewFaceAuModel`.
 
 ## What keeps working
 
-Everything in 2.1: `NewFaceAuModel` with its `Predict`, `PredictDetailed`, `PredictRaw`, the calibration calls, the results calls, `FacePrediction`, `Emotion`, `DeviceManager`, the serialized fields (`faceModel`, `useCalibration`, `saveResults`) and the saved calibration and results files. Scenes and prefabs do not need changes. A calibration saved by 2.1 loads in 2.2.
+Everything in 2.1 (after that `using` line): `NewFaceAuModel` with its `Predict`, `PredictDetailed`, `PredictRaw`, the calibration calls, the results calls, `FacePrediction`, `Emotion`, `DeviceManager`, the serialized fields (`faceModel`, `useCalibration`, `saveResults`) and the saved calibration and results files. Scenes and prefabs do not need changes. A calibration saved by 2.1 loads in 3.0.
 
 ## What is new
 

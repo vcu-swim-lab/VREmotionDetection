@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Unity.InferenceEngine;
 using UnityEngine;
 
@@ -82,6 +83,12 @@ namespace VcuSwimLab.Backends.SparseVr
             {
                 return Inference.Fail(
                     PredictionErrorCode.InvalidInput, $"the window must have exactly {WindowFrames} frames", Id);
+            }
+
+            if (window.Any(frame => frame.Length != FeaturesPerFrame))
+            {
+                return Inference.Fail(
+                    PredictionErrorCode.InvalidInput, $"every frame must have exactly {FeaturesPerFrame} values", Id);
             }
 
             if (inFlight)

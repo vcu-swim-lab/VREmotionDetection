@@ -1,31 +1,34 @@
 using VcuSwimLab.Backends;
 
-public readonly struct PredictionOutcome
+namespace VcuSwimLab.VREmotionDetection
 {
-    private readonly bool succeeded;
-
-    private PredictionOutcome(bool succeeded, FacePrediction prediction, PredictionError? error)
+    public readonly struct PredictionOutcome
     {
-        this.succeeded = succeeded;
-        Prediction = prediction;
-        Error = error;
-    }
+        private readonly bool succeeded;
 
-    public bool Ok => succeeded;
+        private PredictionOutcome(bool succeeded, FacePrediction prediction, PredictionError? error)
+        {
+            this.succeeded = succeeded;
+            Prediction = prediction;
+            Error = error;
+        }
 
-    public FacePrediction Prediction { get; }
+        public bool Ok => succeeded;
 
-    public PredictionError? Error { get; }
+        public FacePrediction Prediction { get; }
 
-    public FacePrediction? PredictionOrNull => succeeded ? Prediction : (FacePrediction?)null;
+        public PredictionError? Error { get; }
 
-    internal static PredictionOutcome Success(FacePrediction prediction)
-    {
-        return new PredictionOutcome(true, prediction, null);
-    }
+        public FacePrediction? PredictionOrNull => succeeded ? Prediction : (FacePrediction?)null;
 
-    internal static PredictionOutcome Failure(PredictionError error)
-    {
-        return new PredictionOutcome(false, default, error);
+        internal static PredictionOutcome Success(FacePrediction prediction)
+        {
+            return new PredictionOutcome(true, prediction, null);
+        }
+
+        internal static PredictionOutcome Failure(PredictionError error)
+        {
+            return new PredictionOutcome(false, default, error);
+        }
     }
 }

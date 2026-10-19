@@ -1,10 +1,14 @@
-public enum Emotion
+
+namespace VcuSwimLab.VREmotionDetection
 {
-    Anger,
-    Disgust,
-    Fear,
-    Happiness,
-    Neutral,
-    Sadness,
-    Surprise,
+    public enum Emotion
+    {
+        Anger,
+        Disgust,
+        Fear,
+        Happiness,
+        Neutral,
+        Sadness,
+        Surprise,
+    }
 }

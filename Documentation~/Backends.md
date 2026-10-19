@@ -41,6 +41,7 @@ public interface IEmotionBackend : IDisposable
 - `BackendResult` is either scores or an error. `Scores` has one value per class name, in class order, finite and not negative. `Raw` is optional: the backend's own answers before any normalisation. `ReferenceFacesSent` says whether the profile reached the model.
 - `Id` is stored inside saved calibrations. Change it whenever a change would make old calibrations meaningless (a retrained model, a new prompt).
 - `PrepareForCalibration` lets a backend make its scores safe for the calibration's logarithm. SparseVr returns them unchanged; Jev adds a small floor because it often answers exactly 0.
+- Optional: implement `ICancelableBackend` (`void CancelPending()`) if the backend can stop work in flight. The predictor calls it when you switch away, disable or destroy the component. Backends without it keep working; their late answers are dropped.
 - Return errors with `BackendResult.Failure(code, message, Id)`. Do not throw for conditions such as no network; reserve exceptions for programming mistakes. If a backend does throw, the predictor catches it and reports an `Internal` error.
 
 ## Writing a backend

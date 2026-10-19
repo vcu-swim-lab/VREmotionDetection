@@ -39,6 +39,9 @@ The older calls still work: `PredictDetailed` returns null on failure, and `Pred
 | `ServerError` | the service failed | try again later; `IsTransient` |
 | `InvalidResponse` | the answer cannot be used | wrong number of scores, NaN, malformed body |
 | `Internal` | an unexpected exception | a bug or a failing model |
+| `Canceled` | the call was abandoned | the backend changed, or the predictor was disabled or destroyed, while it waited |
+
+A `Canceled` call is the one case where the answer is dropped on purpose: its late result is never returned as a success, and it does not touch `LastError`, `PredictionFailed` or the results file of the new session. Backends that implement `ICancelableBackend` also stop their in-flight work. `Predict()` returns `(Neutral, 0)` for it and leaves `LastError` empty, so use `TryPredict` when your code switches backend or disables the predictor while a prediction may be running. Calibration that is running when this happens stops and `CalibrationError` says it was interrupted. Call again to predict with the new backend.
 
 `PredictRaw` returns null (no tensor, no error) when the SparseVr model is unavailable, the window times out, or a prediction is already running.
 
@@ -46,12 +49,12 @@ The older calls still work: `PredictDetailed` returns null on failure, and `Pred
 
 ## Logging
 
-One warning per distinct message, not one per call: a lost-tracking loop logs once until a prediction succeeds. No log line or error message ever contains the API key. Polling failures in `DeviceManager` are also reported once per device, and the device is retried after a second.
+One warning per distinct message, not one per call: a lost-tracking loop logs once until a prediction succeeds. No log line or error message ever contains the API key, and the service's own error text is left out unless `JevOptions.IncludeServerDetails` is on (then it is cleaned and cut to 200 characters). Polling failures in `DeviceManager` are also reported once per device, and the device is retried after a second.
 
 ## Results file
 
-Failed predictions appear in the CSV as `no_tracking` (tracking was lost) or `backend_error` (the backend failed). `NotReady` and `Busy` are caller mistakes and are not recorded. See [Data formats](DataFormats.md).
+Failed predictions appear in the CSV as `no_tracking` (tracking was lost) or `backend_error` (the backend failed or answered with something unusable). `NotReady`, `NotConfigured`, `Canceled` and `Busy` are not recorded. See [Data formats](DataFormats.md).
 
 ## Checking before you run
 
-`UseJev(null)` and `new JevOptions("")` throw immediately. `JevOptions.Validate()` lists every problem with the settings at once. `LoadCalibration` and `SaveCalibration` report file problems through `CalibrationError` and a false return; only an invalid `userId` throws.
+`UseJev(null)` and `new JevOptions("")` throw immediately. `JevOptions.Validate()` lists every problem with the settings at once. `LoadCalibration` and `SaveCalibration` report file problems through `CalibrationError` and a false return; an invalid `userId` throws `ArgumentException` when the file is looked up.

@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
 using UnityEngine;
 using VcuSwimLab.Calibration;
 
 namespace VcuSwimLab.Backends.Jev
 {
-    public sealed class JevBackend : IEmotionBackend
+    public sealed class JevBackend : ICancelableBackend
     {
         public const string SystemOnePath = "/v1/systemone";
         public const float InitialBackoffSeconds = 0.5f;
@@ -20,6 +22,10 @@ namespace VcuSwimLab.Backends.Jev
         private readonly float timeoutSeconds;
         private readonly int maxRetries;
         private readonly bool sendOwnFaces;
+        private readonly bool logRequests;
+        private readonly bool includeServerDetails;
+
+        private CancellationTokenSource pending = new CancellationTokenSource();
 
         public JevBackend(JevOptions options, IReadOnlyList<string> movementAuNames, IHttpTransport transport = null)
         {
@@ -46,10 +52,12 @@ namespace VcuSwimLab.Backends.Jev
             this.transport = transport ?? new UnityWebRequestTransport();
             apiKey = options.ApiKey;
             model = options.Model.Trim();
-            url = options.BaseUrl.TrimEnd('/') + SystemOnePath;
+            url = options.BaseUrl.Trim().TrimEnd('/') + SystemOnePath;
             timeoutSeconds = options.TimeoutSeconds;
             maxRetries = options.MaxRetries;
             sendOwnFaces = options.SendOwnFacesInRequest;
+            logRequests = options.LogRequests;
+            includeServerDetails = options.IncludeServerDetails;
             Id = $"jev:{model}:p{JevPrompt.Version}";
         }
 
@@ -59,6 +67,8 @@ namespace VcuSwimLab.Backends.Jev
 
         public async Awaitable<BackendResult> ScoreAsync(BackendRequest request)
         {
+            var token = Volatile.Read(ref pending).Token;
+
             try
             {
                 if (!WindowValidation.TryValidate(request.Window, 1, CalibrationMath.FaceActionUnitCount, out string problem))
@@ -85,7 +95,23 @@ namespace VcuSwimLab.Backends.Jev
 
                 for (int attempt = 0; ; ++attempt)
                 {
-                    var reply = await transport.PostJsonAsync(url, apiKey, body, timeoutSeconds);
+                    if (token.IsCancellationRequested)
+                    {
+                        return Canceled();
+                    }
+
+                    var clock = Stopwatch.StartNew();
+                    var reply = await Post(body, token);
+
+                    if (logRequests)
+                    {
+                        JevRequestLog.Write(url, reply, clock.ElapsedMilliseconds, attempt, maxRetries + 1, apiKey, includeServerDetails);
+                    }
+
+                    if (token.IsCancellationRequested)
+                    {
+                        return Canceled();
+                    }
 
                     if (reply.StatusCode >= 200 && reply.StatusCode < 300)
                     {
@@ -101,20 +127,36 @@ namespace VcuSwimLab.Backends.Jev
                     {
                         return Fail(
                             JevResponseParser.CodeFor(reply.StatusCode),
-                            JevResponseParser.FailureMessage(reply.StatusCode, reply.Body));
+                            JevResponseParser.FailureMessage(reply.StatusCode, reply.Body, apiKey, includeServerDetails));
                     }
 
-                    await Awaitable.WaitForSecondsAsync(BackoffSeconds(attempt, reply.RetryAfterSeconds));
+                    await Awaitable.WaitForSecondsAsync(BackoffSeconds(attempt, reply.RetryAfterSeconds), token);
                 }
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                return Canceled();
             }
             catch (Exception e)
             {
-                return Fail(PredictionErrorCode.Internal, $"{e.GetType().Name}: {e.Message}");
+                return Fail(PredictionErrorCode.Internal, JevText.Sanitize($"{e.GetType().Name}: {e.Message}", apiKey));
+            }
+        }
+
+        public void CancelPending()
+        {
+            try
+            {
+                Interlocked.Exchange(ref pending, new CancellationTokenSource()).Cancel();
+            }
+            catch (AggregateException)
+            {
             }
         }
 
         public void Dispose()
         {
+            CancelPending();
         }
 
         internal static bool IsTransient(long statusCode)
@@ -128,6 +170,18 @@ namespace VcuSwimLab.Backends.Jev
             return retryAfterSeconds.HasValue
                 ? Mathf.Max(backoff, Mathf.Min(retryAfterSeconds.Value, MaxRetryAfterSeconds))
                 : backoff;
+        }
+
+        private Awaitable<HttpReply> Post(string body, CancellationToken token)
+        {
+            return transport is ICancelableHttpTransport cancelable
+                ? cancelable.PostJsonAsync(url, apiKey, body, timeoutSeconds, token)
+                : transport.PostJsonAsync(url, apiKey, body, timeoutSeconds);
+        }
+
+        private BackendResult Canceled()
+        {
+            return Fail(PredictionErrorCode.Canceled, "the Jev request was canceled");
         }
 
         private BackendResult Fail(PredictionErrorCode code, string message)

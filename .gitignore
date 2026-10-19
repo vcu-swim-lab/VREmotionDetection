@@ -102,11 +102,6 @@ InitTestScene*.unity*
 /tmp/
 /tmp.meta
 
-# Experimental models kept on the researchers' machines; only the deployed model ships.
-/Archive~/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx
-/Archive~/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_excluding-EmojiHero.onnx.meta
-
-# Build output of the dotnet test harness
-/Tests~/DotnetHarness/**/bin/
-/Tests~/DotnetHarness/**/obj/
-/Tests~/DotnetHarness/artifacts/
+# Lab-internal release guide, not part of the package
+/PUBLISHING_GUIDE.md.pdf
+/LIBRARY_ISSUE_REPORT.md

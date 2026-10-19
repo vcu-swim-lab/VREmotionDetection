@@ -10,6 +10,12 @@ sure it is, about twice a second. You write a few lines; the package does the re
 var (emotion, confidence) = await predictor.Predict();      // Happiness, 0.81
 ```
 
+> **Two ways to predict.** **SparseVr** runs on the headset with the bundled model: free, offline, and
+> the face data never leaves the device. **Jev** asks Typesafe's cloud model: it is a **third-party
+> paid service** that needs your own Typesafe account, an API key and internet, and a description of
+> the player's face is sent to Typesafe. Read [Privacy, data and limitations](#16-privacy-data-and-limitations)
+> before you use Jev with real players. Predictions are estimates, **not a medical diagnosis**.
+
 ## Contents
 
 1. [What this package is for](#1-what-this-package-is-for)
@@ -27,7 +33,9 @@ var (emotion, confidence) = await predictor.Predict();      // Happiness, 0.81
 13. [Results files](#13-results-files)
 14. [Write your own backend](#14-write-your-own-backend)
 15. [Troubleshooting](#15-troubleshooting)
-16. [More](#16-more)
+16. [Privacy, data and limitations](#16-privacy-data-and-limitations)
+17. [Related papers and citation](#17-related-papers-and-citation)
+18. [More](#18-more)
 
 ---
 
@@ -74,6 +82,20 @@ If you are unsure, start with **SparseVr**. It is the default.
 | **Internet Access = Require** | only if you use Jev: *Player Settings → Other Settings → Internet Access* |
 | A **Typesafe API key** | only if you use Jev. Get your own at [console.typesafe.ai/keys](https://console.typesafe.ai/keys). The package provides none |
 
+**Versions this package is built against**
+
+| Component | Version |
+|---|---|
+| Unity | 6000.0 or newer (built with 6000.0.33f1) |
+| Meta XR Core SDK | 77.0.0 (the package installs it) |
+| Unity Inference Engine | 2.2.1 |
+| OpenXR plugin | 1.15.0 |
+| Android | 64-bit ARM; the demo game builds for API level 32 |
+| Headset | Meta Quest Pro |
+
+The versions confirmed on a headset for each release are listed in its
+[release notes](https://github.com/vcu-swim-lab/VREmotionDetection/releases).
+
 ---
 
 ## 3. Add it to your project
@@ -89,8 +111,17 @@ If you are unsure, start with **SparseVr**. It is the default.
 4. Click **Install**. Unity also installs what the package depends on: Unity's Inference Engine,
    the Meta XR Core SDK, OpenXR and Newtonsoft Json.
 
-To lock a version, add `#` and a tag or commit to the URL, for example
-`https://github.com/vcu-swim-lab/VREmotionDetection.git#<commit-hash>`.
+To lock a version, add `#` and a release tag to the URL, for example
+`https://github.com/vcu-swim-lab/VREmotionDetection.git#v3.0.0` (a commit hash works too).
+
+**From OpenUPM** (once the package is listed on [openupm.com](https://openupm.com)): run
+`openupm add com.vcu-swim-lab.vr-emotion-detection`, or in Unity open *Edit → Project Settings →
+Package Manager*, add a scoped registry with name `OpenUPM`, URL `https://package.openupm.com` and
+scope `com.vcu-swim-lab`, then install the package from *Package Manager → My Registries*. All its
+other dependencies come from Unity's own registry.
+
+All the package's types live in the namespace `VcuSwimLab.VREmotionDetection`: start every script
+that uses them with `using VcuSwimLab.VREmotionDetection;`.
 
 **Samples:** in the Package Manager select *VR Emotion Detector*, open the **Samples** tab and
 **Import** one: *Basic Usage*, *Movement Calibration*, *Calibration Check*, *Jev Prediction*.
@@ -120,6 +151,7 @@ Add this script to the same GameObject and press Play on the headset (or Quest L
 
 ```csharp
 using UnityEngine;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class FirstPrediction : MonoBehaviour
@@ -135,7 +167,7 @@ public class FirstPrediction : MonoBehaviour
 }
 ```
 
-You should see something like `Happiness (0.81)` in the Console. The call takes at least half a
+You should see something like `Happiness (0.81)` in the Console. The call takes about half a
 second: it waits for five fresh readings of the face (the model reads the face ten times a second).
 
 * `emotion` is one of the seven emotions.
@@ -183,7 +215,7 @@ Things must happen in this order. The recipes in the next section are exactly th
 | Step | Call | Why this position |
 |---|---|---|
 | **1. Choose the backend** | nothing for SparseVr (default), or `UseSparseVr()`, or `UseJev(options)` | a calibration belongs to the backend that made it, so the backend comes first. Choosing a *different* backend later clears the calibration |
-| **2. Turn calibration on** *(only if you want it)* | `UseCalibration = true` | while it is off, every calibration call does nothing |
+| **2. Turn calibration on** *(only if you want it)* | `UseCalibration = true` | while it is off, the calibration calls do not calibrate and `CalibrationError` says so |
 | **3. Load a saved calibration** | `LoadCalibration(playerId)` → `bool` | skip the minute and a half of calibrating if this player already did it |
 | **4. Otherwise calibrate** | `await CalibrateAll(prompt)` → `bool` | asks the player for each of the seven faces in turn |
 | **5. Save it** | `SaveCalibration(playerId)` → `bool` | so next time step 3 succeeds |
@@ -196,7 +228,9 @@ Good to know:
   `async void Start()` or `async Awaitable`, as in the recipes. Do not block with `.Wait()`.
 * Your script's `Start` may run before the predictor's `Start`. That is fine: the first prediction
   waits one frame for it, and the calibration calls above work before it too.
-* One prediction at a time. A second call while one is running returns a `Busy` error.
+* One prediction at a time. A second call while one is running returns a `Busy` error. A call that is
+  still waiting when you switch backend or disable the component ends with `Canceled` instead of an
+  answer from the old session.
 * When a call fails, **wait before trying again** (the recipes use `WaitForSecondsAsync`). Otherwise
   a wrong Jev key would send a request every frame.
 
@@ -212,6 +246,7 @@ The simplest setup. Nothing to configure: SparseVr is the default.
 
 ```csharp
 using UnityEngine;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class SparseVrExample : MonoBehaviour
@@ -261,6 +296,7 @@ The order: **choose backend → calibration on → load a saved one, otherwise c
 
 ```csharp
 using UnityEngine;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class SparseVrCalibratedExample : MonoBehaviour
@@ -337,6 +373,7 @@ its own.
 ```csharp
 using UnityEngine;
 using VcuSwimLab.Backends.Jev;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class JevExample : MonoBehaviour
@@ -396,6 +433,7 @@ a network request per sample.
 ```csharp
 using UnityEngine;
 using VcuSwimLab.Backends.Jev;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class JevCalibratedExample : MonoBehaviour
@@ -488,6 +526,7 @@ selected**; the predictor keeps using SparseVr.
 using UnityEngine;
 using VcuSwimLab.Backends;
 using VcuSwimLab.Backends.Jev;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class CompareBackendsExample : MonoBehaviour
@@ -550,6 +589,7 @@ Two ways to hear about problems: look at each outcome, and/or subscribe to the e
 ```csharp
 using UnityEngine;
 using VcuSwimLab.Backends;
+using VcuSwimLab.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class FailureHandlingExample : MonoBehaviour
@@ -637,7 +677,7 @@ results file.
 
 | Call | Await? | Returns | Notes |
 |---|---|---|---|
-| `UseCalibration` (property) | — | `bool`, settable | the **Use Calibration** checkbox. While `false`, the calls below do nothing |
+| `UseCalibration` (property) | — | `bool`, settable | the **Use Calibration** checkbox. While `false`, the calls below do not calibrate (`CalibrationError` says so) |
 | `IsCalibrated` | — | `bool` | `true` when `Predict` is using a calibration |
 | `CalibrationError` | — | `string` | why the last calibration, load or save failed; empty or `null` if nothing failed |
 | `CalibrateAll(Func<Emotion, Awaitable> prompt = null, float secondsBetweenSamples = 1, int maxAttempts = 20)` | yes | `bool` | calibrates all seven emotions then finishes. `true` = ready. Call it again to start over |
@@ -663,7 +703,7 @@ Calling `CalibrateEmotion`, `BeginCalibrationEmotion` or `AddCalibrationSample` 
 | `DeleteSavedCalibration(string playerId)` | `void` | |
 | `NewFaceAuModel.CalibrationPath(string playerId)` (static) | `string` | where the file lives |
 
-`playerId` may contain only letters, digits, `-` and `_` (anything else throws `ArgumentException`)
+`playerId` may contain only letters, digits, `-` and `_` (anything else makes the file lookup throw `ArgumentException`)
 because it becomes a file name.
 
 ### Results
@@ -730,6 +770,7 @@ because it becomes a file name.
 | `ServerError` | the service failed | try later; transient |
 | `InvalidResponse` | the answer could not be used | wrong number of scores, NaN, or a malformed reply |
 | `Internal` | an unexpected exception | a bug in a backend; the message names it |
+| `Canceled` | the backend changed, or the predictor was disabled or destroyed, while this call was waiting | call again; the old answer is dropped and nothing is recorded or reported |
 
 ### Smaller types
 
@@ -767,10 +808,11 @@ It describes one person's face, so never put it in your project or a repository.
 work, uncalibrated. To try again call `CalibrateAll` again (it starts over).
 
 **Step by step, if you need your own flow:** `StartCalibration()` → `await CalibrateEmotion(e)` for
-each emotion → `FinishCalibration()` → `SaveCalibration(id)`.
+each emotion → `FinishCalibration()` → `SaveCalibration(id)`. An emotion can be collected once per
+`StartCalibration()`: calling `CalibrateEmotion` for it again throws `InvalidOperationException`, so to
+redo one, start over.
 
-Honest limits: a resting face has little shape, so Neutral benefits least. Calibrating Jev has not
-been shown to improve its accuracy; check with `Samples~/CalibrationCheck` on your own data.
+A resting face has little shape, so Neutral benefits least from calibration.
 
 ---
 
@@ -782,29 +824,47 @@ options.Model = "jev-1.13.0";                      // default; pin a versioned m
 options.TimeoutSeconds = 10;                       // per attempt
 options.MaxRetries = 2;                            // transient failures only
 options.SendOwnFacesInRequest = false;             // default
+options.LogRequests = false;                       // true: one Console line per request
+options.IncludeServerDetails = false;              // true: add Typesafe's own error text to messages
 predictor.UseJev(options);
 ```
 
 | Option | Default | Rule |
 |---|---|---|
 | `ApiKey` (constructor) | none | required; no spaces or non-ASCII characters |
-| `BaseUrl` | `https://api.typesafe.ai` | an `https` URL (`http` only for localhost) |
+| `BaseUrl` | `https://api.typesafe.ai` | an `https` URL without credentials, query or fragment (`http` only for localhost) |
 | `Model` | `jev-1.13.0` | not empty |
 | `TimeoutSeconds` | 10 | above 0, at most 120 |
 | `MaxRetries` | 2 | 0 to 5 |
 | `SendOwnFacesInRequest` | `false` | also sends the player's calibration summary |
+| `LogRequests` | `false` | writes one Console line for every request the package sends |
+| `IncludeServerDetails` | `false` | also puts the service's own error text into error messages and the `[Jev]` line, cleaned of keys and cut to 200 characters |
 
-* **Your key.** The package never ships, stores or logs a key, and it is never written into a
-  Unity asset. `JevOptions.FromEnvironment()` reads `TYPESAFE_API_KEY` (Editor and desktop only).
+* **Your key.** The package never ships or stores a key, never writes one itself, and never puts one
+  into a Unity asset. If a server echoes it back, it is removed from any text the package shows. `JevOptions.FromEnvironment()` reads `TYPESAFE_API_KEY` (Editor and desktop only).
   **A key inside a shipped build can be extracted**: for a public release, set `BaseUrl` to your
   own server, which adds the key and forwards the request to Typesafe.
 * **What is sent:** a short description of the face (strongest movements, as words) and, with
   `SendOwnFacesInRequest`, how similar the face is to each of this player's calibrated faces. The
   player's face data leaves the device: **get their consent**.
+* **Error text:** by default an error only says what happened ("Typesafe rejected the request") and
+  never copies the service's reply into your logs or events. Set `IncludeServerDetails = true` while
+  debugging to add that text; it is cleaned (your key, `Bearer` and `Authorization` values removed, control
+  characters replaced by spaces) and cut to 200 characters. Never rely on this to hide face data.
 * **Speed:** each prediction is one request. If the network is down, a failing call can take about
   30 seconds with the defaults (three tries of up to 10 s); lower `TimeoutSeconds` or `MaxRetries`
   if you need a faster verdict.
 * **Cost:** Typesafe bills per input token (about $0.042 per million at the time of writing).
+
+**Seeing the requests.** With `options.LogRequests = true` every request leaves one Console line.
+The key and the face data are not printed:
+
+```
+[Jev] POST https://api.typesafe.ai/v1/systemone -> 200 in 412 ms (attempt 1 of 3)
+```
+
+Nothing is sent unless the headset delivers a valid face window: without face tracking you get
+`NoTracking` and no `[Jev]` line.
 
 More: [`Documentation~/Jev.md`](./Documentation~/Jev.md).
 
@@ -822,8 +882,8 @@ With **Save Results** on (the default) every prediction is appended to a CSV fil
 
 * `emotion` is what your game received. `model_emotion` is the backend's own answer; they differ
   only when calibration changed it. `calibrated` is `yes` or `no`.
-* A prediction that failed because tracking was lost is a `no_tracking` row; one that failed because
-  the backend failed is a `backend_error` row.
+* A prediction that failed because tracking was lost is a `no_tracking` row; any other failure (the
+  backend failed or answered with something unusable) is a `backend_error` row.
 * One file per predictor per run of the app, named `session_<date>_<time>.csv` (UTC). The file does
   not say who played: note which session belongs to whom. Face-tracking values are never saved.
 
@@ -855,6 +915,7 @@ A backend turns a window of face data into seven scores. Implement `IEmotionBack
 ```csharp
 using UnityEngine;
 using VcuSwimLab.Backends;
+using VcuSwimLab.VREmotionDetection;
 
 public sealed class AlwaysNeutralBackend : IEmotionBackend
 {
@@ -899,28 +960,112 @@ inside calibrations, so change it when a change would make old calibrations mean
 | `NotReady` | the component is disabled or on an inactive object | enable it |
 | `Unauthorized` | wrong, missing or expired Typesafe key | pass a valid key to `new JevOptions(...)` |
 | `Unreachable` / `Timeout` on a Quest | no internet, or Internet Access is not `Require` | enable it in Player Settings; check Wi-Fi |
+| No Jev requests seem to happen | no face data (`NoTracking`), or the key was rejected | set `options.LogRequests = true` and read the `[Jev]` lines (see [Jev in depth](#12-jev-in-depth)) |
 | `new JevOptions(...)` or `UseJev` throws `ArgumentException` | empty key, or a setting such as `BaseUrl` (must be https) is invalid | fix the value; the message lists every problem |
 | `LoadCalibration` returns `false` | no file, damaged file, **or made with another backend/model** | read `CalibrationError`; calibrate again |
 | `CalibrateAll` returns `false` | tracking lost, or too many Jev failures | read `CalibrationError` and `LastError`; run it again |
 | Calibration calls seem to do nothing | **Use Calibration** is off | set `UseCalibration = true` *before* loading or starting |
 | `ArgumentException` about `playerId` | a space, slash or other character | use letters, digits, `-` and `_` only |
 | `Busy` | two predictions at once | call from one loop; await each call |
+| `Canceled` | you switched backend or disabled the component during a call | expected; call again. `Predict()` returns `(Neutral, 0)` for it with `LastError` still empty: use `TryPredict` when your code switches backends while predicting |
 | No results file | **Save Results** is off, or no prediction yet | tick it; check `ResultsFilePath` |
 | The game freezes in a prediction loop | a loop that retries instantly after a failure | wait after failures, as in the recipes |
 
 ---
 
-## 16. More
+## 16. Privacy, data and limitations
+
+### What stays on the device
+
+* **SparseVr** runs entirely on the headset. In this mode the package makes **no network request**.
+* Calibration files and results files are written to the app's storage on the device
+  (`Application.persistentDataPath`, sections 11 and 13). The package never uploads them. They
+  describe one person's face movements: never commit or share them.
+* The package contains **no analytics or telemetry** and no key of ours.
+
+### What leaves the device in Jev mode
+
+Each prediction is one HTTPS request to Typesafe (`https://api.typesafe.ai`, or your own `BaseUrl`):
+
+| Sent | Example |
+|---|---|
+| the model name | `jev-1.13.0` |
+| the overall face activity and the strongest face movements, each with a strength word | `high`, `LipCornerPullerL (strong)` |
+| the seven emotion questions, with fixed wording | |
+| **only with `SendOwnFacesInRequest`:** how close the face is to each of this player's calibrated faces: similarity, rank, signature movements and how many of them are active | `3 of 4` |
+| your API key, in the `Authorization` header only | |
+
+**Not sent:** camera images, raw sensor values over time, a player name or id, the calibration file,
+the results files or any device identifier. Typesafe still sees what any web server sees: your IP
+address and the time of each request.
+
+### Typesafe's terms, retention and cost
+
+Jev is run by Typesafe AI, not by this lab. Read their [Terms of Use](https://typesafe.ai/legal/terms)
+and [Privacy Policy](https://typesafe.ai/legal/privacy-policy). The policy (dated 19 November 2025 when
+this was written) says Typesafe will not train or fine-tune models on your input, keeps personal data
+only as long as reasonably necessary to provide the service, and deletes it on request
+(privacy@typesafe.ai). So **retention and deletion are controlled by Typesafe**; the package stores
+nothing on a server. Typesafe charges per input token (about $42 per billion at the time of writing,
+see [typesafe.ai](https://typesafe.ai)); accounts, limits and availability are theirs too.
+
+### Consent
+
+Face-tracking data about a person is personal data, and some laws treat it as biometric. Before you
+send it to a third party get the player's **explicit consent**, and follow your study protocol (IRB),
+the law and your platform's rules. Make Jev an opt-in choice in your game.
+
+### Known limitations
+
+* Seven basic emotions only, estimated from face movement. A face is not a feeling: the same
+  expression can mean different things to different people.
+* The bundled SparseVr model is trained on acted expressions recorded with Quest Pro headsets.
+  Natural, spontaneous emotions look different from acted ones and are harder to recognise (see the
+  papers in section 17). No accuracy figure is promised here: results from a paper do not carry over
+  automatically to your game and your players.
+* It needs a Quest Pro with face tracking allowed; fit and tracking quality change the result.
+  Neutral is the weakest class. Calibration helps but costs about a minute and a half per player.
+* Jev answers come from a cloud model and can change between model versions: pin `Model`.
+* **This is not a medical or clinical tool.** Do not use it to diagnose, treat or screen anyone, or
+  to make decisions about people.
+
+### Security and privacy reports
+
+Please report a security or privacy problem **privately** to **Kostadin Damevski,
+[kdamevski@vcu.edu](mailto:kdamevski@vcu.edu)**. Do not post keys, face data or calibration files in a
+public issue. If an API key was ever committed, revoke it at Typesafe first.
+
+---
+
+## 17. Related papers and citation
+
+* Tare, Rahman, Choi, Lim, Lee, Lee, Cho, Damevski. *Detecting Natural Emotions in Virtual Reality
+  Through Facial Movement Analysis.* VRST 2025.
+  [doi:10.1145/3756884.3766013](https://doi.org/10.1145/3756884.3766013)
+* Rahman, Choi, Lim, Lee, Lee, Cho, Damevski. *Toward Generalized Emotion Recognition in VR by
+  Bridging Natural and Acted Facial Expressions.* Sensors 26(3):845, 2026.
+  [doi:10.3390/s26030845](https://doi.org/10.3390/s26030845)
+* Ortmann, Wang, Putzar. *EmojiHeroVR: A Study on Facial Expression Recognition under Partial
+  Occlusion from Head-Mounted Displays.* ACII 2024.
+  [doi:10.1109/ACII63134.2024.00014](https://doi.org/10.1109/ACII63134.2024.00014)
+* Rahman, Kang, Jang, Lee, Cho, Damevski. *When Pair Programming Gets Emotional: A Case Study of
+  What LLMs Still Miss.* IJSEKE, 2026.
+  [doi:10.1142/S0218194026500294](https://doi.org/10.1142/S0218194026500294)
+
+**Related papers and BibTeX:** copy the entries from [`CITATIONS.bib`](./CITATIONS.bib). To cite this
+software, use GitHub's **Cite this repository** button, which reads [`CITATION.cff`](./CITATION.cff).
+Third-party components and licences are listed in [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md).
+
+---
+
+## 18. More
 
 * **Documentation** — [`Documentation~/`](./Documentation~/README.md): architecture, backends, Jev,
-  calibration, error codes, data formats, design notes, migration from 2.1.
+  calibration, error codes, data formats and design notes.
 * **Samples** — import from the Package Manager: *Basic Usage* (Recipe 1), *Movement Calibration*
   (Recipe 2), *Calibration Check*, *Jev Prediction* (Recipe 3).
-* **Changes** — [CHANGELOG.md](./CHANGELOG.md).
-* **Tests** — `Tests/Editor` runs in Unity's Test Runner. `Tests~/DotnetHarness` runs the same tests
-  and a full end-to-end scenario without Unity: `dotnet test Tests/Tests.csproj`.
 * **Older code** — `FaceAuModel` (the original two-model predictor) is obsolete; use
-  `NewFaceAuModel`. Models no longer used are kept in `Archive~/`.
+  `NewFaceAuModel`. The models it needed are no longer shipped; they remain in the Git history.
 
 ## License
 

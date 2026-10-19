@@ -34,10 +34,6 @@ See [Calibration](Calibration.md) for the frozen constants. Also:
 - `InvariantCulture` everywhere in the CSV so `0.75` is the same on every device.
 - The menu writes a `.gitignore` into `HeadsetResults` because the files describe real people.
 
-## Internals visible to tests
+## Internal types
 
-`Device`, `DeviceManager.PollAndDispatch`, `DeviceRegistry`, the Jev prompt and parsing classes and similar are internal on purpose: they are implementation details, not public surface. The test assemblies see them through `InternalsVisibleTo`.
-
-## Testing without Unity
-
-`Tests~/DotnetHarness` compiles each assembly on its own against small stand-ins for the Unity types, so the dependency graph, the unit tests and a scripted end-to-end scenario run with plain `dotnet test`. It does not replace running the EditMode tests in Unity.
+`Device`, `DeviceManager.PollAndDispatch`, `DeviceRegistry`, the Jev prompt and parsing classes and similar are internal on purpose: they are implementation details, not public surface. Only the editor assembly can see the runtime's internals (`StoragePaths`), through `InternalsVisibleTo`.

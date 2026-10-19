@@ -54,6 +54,8 @@ for tested configurations. Android/Quest builds should use ARM64.
 In Package Manager, import **Basic Usage**, **Movement Calibration**, **Calibration Check**, or
 **Jev Prediction** from the package's Samples tab.
 
+To see the library used in a complete game, check out [TrueEmotionGameVR](https://github.com/vcu-swim-lab/TrueEmotionGameVR).
+
 For additional installation options, see the [detailed setup guide](./Documentation~/UsageGuide.md#3-add-it-to-your-project).
 
 ## First prediction

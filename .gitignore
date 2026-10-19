@@ -102,6 +102,10 @@ InitTestScene*.unity*
 /tmp/
 /tmp.meta
 
+# UPM documentation is source, not editor backup files (override global *~ rules).
+!/Documentation~/
+!/Documentation~/*.md
+
 # Lab-internal release guide, not part of the package
 /PUBLISHING_GUIDE.md.pdf
 /LIBRARY_ISSUE_REPORT.md

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Describe the bundled local model as the acted-data-trained MoE–TCN model based on Rahman et al.'s architecture.
+- Add `UseLocalModel()`; retain `UseSparseVr()` as a deprecated compatibility alias. Model assets and calibration identifiers are unchanged.
+- Shorten the README and preserve complete examples and reference material in `Documentation~/UsageGuide.md`.
+- Clarify saved-calibration reuse and timing; rename the overview to “How it works.”
+
 ## 3.0.0 - 2026-10-17
 
 ### Breaking

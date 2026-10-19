@@ -156,11 +156,14 @@ namespace VcuSwimLab.VREmotionDetection
             }
         }
 
-        public void UseSparseVr()
+        [Obsolete("Use UseLocalModel() instead.")]
+        public void UseSparseVr() => UseLocalModel();
+
+        public void UseLocalModel()
         {
             if (faceModel == null)
             {
-                throw new InvalidOperationException("assign a face model asset to use the SparseVr backend");
+                throw new InvalidOperationException("assign a face model asset to use the local model");
             }
 
             if (sparseVr == null)
@@ -580,7 +583,7 @@ namespace VcuSwimLab.VREmotionDetection
 
             if (faceModel != null)
             {
-                UseSparseVr();
+                UseLocalModel();
             }
             else
             {

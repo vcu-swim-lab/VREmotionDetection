@@ -1,6 +1,6 @@
 # Data formats
 
-## Model input and output (SparseVr)
+## Model input and output (Local model)
 
 | | |
 |---|---|
@@ -18,9 +18,9 @@ The model was trained on acted expressions recorded on the Quest Pro with 5-fram
 | Field | Meaning |
 |---|---|
 | `Emotion` | the winning emotion |
-| `Confidence` | the backend's own answer for `Emotion` (a probability for SparseVr, Jev's raw answer for Jev) |
+| `Confidence` | the backend's own answer for `Emotion` (a probability for the local model, Jev's raw answer for Jev) |
 | `Scores` | one value per emotion, in `Emotion` order |
-| `Raw` | the backend's answers before normalisation; null for SparseVr |
+| `Raw` | the backend's answers before normalisation; null for the local model |
 | `Window` | an independent deep copy of the frames the backend saw, `[frames][features]` |
 | `Generation` | how many valid frames have ever arrived when the window was taken |
 | `BackendId` | which backend produced it |
@@ -60,7 +60,7 @@ Copy the files to a PC with the Unity menu **VR Emotion > Get Results From Heads
 | Field | Content |
 |---|---|
 | `implementationVersion` | the calibration implementation, `runtime-calibration-v1` |
-| `faceModel` | the backend id that made it (the model asset name for SparseVr) |
+| `faceModel` | the backend id that made it (the model asset name for the local model) |
 | `savedUtc` | when it was saved (ISO 8601) |
 | `classNames` | the emotions in order |
 | `scoreWidth`, `scoreCentroids` | 7, and the 7x7 matrix flattened row by row |

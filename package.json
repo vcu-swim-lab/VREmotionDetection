@@ -2,7 +2,7 @@
   "name": "com.vcu-swim-lab.vr-emotion-detection",
   "version": "3.0.0",
   "displayName": "VR Emotion Detector",
-  "description": "Predicts seven emotions from Meta Quest Pro face tracking with an on-device model (SparseVr) or Typesafe's Jev model, with optional per-player calibration.",
+  "description": "Predicts seven emotions from Meta Quest Pro face tracking with an on-device MoE–TCN model trained on acted emotional-expression data or Typesafe's Jev model, with optional per-player calibration.",
   "unity": "6000.0",
   "unityRelease": "33f1",
   "keywords": [

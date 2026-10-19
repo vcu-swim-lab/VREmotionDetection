@@ -2,6 +2,7 @@
 
 | Page | Read it to |
 |---|---|
+| [Detailed usage guide](UsageGuide.md) | find complete recipes, the API reference, return types, troubleshooting, and privacy details |
 | [Architecture](Architecture.md) | see how the package is split into assemblies and how a prediction flows |
 | [Backends](Backends.md) | use a backend, switch between them, or write your own |
 | [Jev](Jev.md) | set up Typesafe's Jev model, including the API key and privacy |

@@ -10,7 +10,7 @@ public class BasicPredictor : MonoBehaviour
     {
         predictor = GetComponent<NewFaceAuModel>();
 
-        predictor.UseSparseVr();
+        predictor.UseLocalModel();
 
         _ = Run();
     }

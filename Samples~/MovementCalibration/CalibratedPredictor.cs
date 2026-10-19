@@ -12,7 +12,7 @@ public class CalibratedPredictor : MonoBehaviour
     {
         predictor = GetComponent<NewFaceAuModel>();
 
-        predictor.UseSparseVr();
+        predictor.UseLocalModel();
 
         predictor.UseCalibration = true;
 

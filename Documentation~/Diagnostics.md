@@ -43,7 +43,7 @@ The older calls still work: `PredictDetailed` returns null on failure, and `Pred
 
 A `Canceled` call is the one case where the answer is dropped on purpose: its late result is never returned as a success, and it does not touch `LastError`, `PredictionFailed` or the results file of the new session. Backends that implement `ICancelableBackend` also stop their in-flight work. `Predict()` returns `(Neutral, 0)` for it and leaves `LastError` empty, so use `TryPredict` when your code switches backend or disables the predictor while a prediction may be running. Calibration that is running when this happens stops and `CalibrationError` says it was interrupted. Call again to predict with the new backend.
 
-`PredictRaw` returns null (no tensor, no error) when the SparseVr model is unavailable, the window times out, or a prediction is already running.
+`PredictRaw` returns null (no tensor, no error) when the local model is unavailable, the window times out, or a prediction is already running.
 
 `NotReady`, `NotConfigured` and `Busy` answers take one frame, so a loop that calls `Predict` in a `while` cannot spin and freeze the editor.
 

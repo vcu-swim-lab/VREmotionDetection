@@ -12,11 +12,18 @@ Nothing else changes: class names, serialized fields, script GUIDs and the saved
 
 ## What keeps working
 
+### Local-model naming
+
+Use `UseLocalModel()` to select the on-device model trained on acted emotional-expression data.
+`UseSparseVr()` remains a deprecated alias with identical behavior, so existing calls still compile
+with an obsolete warning. Update those calls to remove the warning. This naming change does not
+rename the internal `SparseVrBackend` type, ONNX asset, script GUIDs, or calibration identifiers.
+
 Everything in 2.1 (after that `using` line): `NewFaceAuModel` with its `Predict`, `PredictDetailed`, `PredictRaw`, the calibration calls, the results calls, `FacePrediction`, `Emotion`, `DeviceManager`, the serialized fields (`faceModel`, `useCalibration`, `saveResults`) and the saved calibration and results files. Scenes and prefabs do not need changes. A calibration saved by 2.1 loads in 3.0.
 
 ## What is new
 
-- Backends: `UseSparseVr()`, `UseJev(JevOptions)`, `UseBackend(IEmotionBackend)`, `ActiveBackendId`.
+- Backends: `UseLocalModel()`, `UseJev(JevOptions)`, `UseBackend(IEmotionBackend)`, `ActiveBackendId`.
 - Typed errors: `TryPredict()`, `LastError`, `PredictionFailed`.
 - `CalibrateAll(prompt)`, `ScoreWith(backend, window)`, `CreateJevBackend(options)`.
 - `FacePrediction.Raw`, `ScoreOf(emotion)`, `BackendId`.

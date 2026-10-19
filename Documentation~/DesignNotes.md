@@ -5,7 +5,7 @@ The reasons behind choices that are not obvious from the code.
 ## Models and scores
 
 - **No extra softmax.** The face models already end in a Softmax. Appending a second one does not change the winner, but it ruins the confidence: the teacher's 7-class peak was measured falling from 0.84 to 0.27, which makes any threshold or calibration fitted on it meaningless. `OnnxModelLoader.Prepare` therefore requires you to say whether to append one. The voice model (archived) ends in raw logits and does need it.
-- **Confidence is the backend's own answer.** For SparseVr that is a probability. For Jev, whose seven answers are independent, dividing by their sum would make a single weak answer read as 100%.
+- **Confidence is the backend's own answer.** For the local model that is a probability. For Jev, whose seven answers are independent, dividing by their sum would make a single weak answer read as 100%.
 - **Scores are validated before use.** A model with the wrong number of outputs, or a NaN, becomes an `InvalidResponse` error. Without that a NaN would silently pick Anger (index 0).
 - **Timeout of 3 seconds.** A window needs 0.5 s of valid frames at 10 Hz; the rest allows a few seconds of lost tracking before the caller is told the prediction could not be made.
 

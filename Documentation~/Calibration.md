@@ -1,5 +1,11 @@
 # Calibration
 
+## Reusing a player's calibration
+
+After a successful calibration, call `SaveCalibration(playerId)`. In a later session, choose the same model, enable calibration, and call `LoadCalibration(playerId)`. If a compatible profile exists in this app's storage on the device, the player does not need to repeat the expressions. Otherwise, collect and save a new calibration. Profiles do not automatically transfer to another device.
+
+This stores personal reference information, not newly trained model weights. Allow approximately 70 seconds plus prompts for the local model; tracking loss can add time. Jev also depends on request latency and retries, so its duration is not fixed.
+
 People make the same emotion with different faces. Calibration learns how *this* player makes each emotion, then compares every prediction with the player's own faces. It is **off by default**: without it `Predict` returns the backend's own answer, and the calibration methods do not calibrate: they return `false` (or nothing) and `CalibrationError` says that calibration is off.
 
 ## Using it
@@ -45,10 +51,10 @@ Choose the backend first, then set `UseCalibration = true`, then load or run a c
 
 ## It follows the backend
 
-Calibration collects and classifies with whichever backend is active. A calibration made with SparseVr is not valid for Jev and the other way round. This is enforced:
+Calibration collects and classifies with whichever backend is active. A calibration made with the local model is not valid for Jev and the other way round. This is enforced:
 
 - a saved calibration records the backend id, and `LoadCalibration` refuses a file made by another backend ("calibrate again");
-- choosing a backend with a different `ActiveBackendId` (`UseSparseVr`, `UseJev` or `UseBackend`) clears the current calibration; choosing the same one again keeps it;
+- choosing a backend with a different `ActiveBackendId` (`UseLocalModel`, `UseJev` or `UseBackend`) clears the current calibration; choosing the same one again keeps it;
 - if the backend changes while `CalibrateEmotion` is running, it stops and returns false.
 
 ## Where it is stored

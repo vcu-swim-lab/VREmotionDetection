@@ -6,7 +6,9 @@ For a short quick start, see the [package README](../README.md).
 
 The Quest Pro tracks the player's face. This package turns that face-tracking data into one of
 seven emotions (**Anger, Disgust, Fear, Happiness, Neutral, Sadness, Surprise**) and tells you how
-sure it is, about twice a second. You write a few lines; the package does the rest.
+strongly the model scores each expression. Collecting five valid tracking readings takes approximately
+half a second, followed by model processing. Jev adds network latency, and tracking loss or retries
+can increase the wait; prediction frequency is not guaranteed.
 
 ```csharp
 var (emotion, confidence) = await predictor.Predict();      // Happiness, 0.81
@@ -66,7 +68,7 @@ to another model**.
 | Needs | nothing extra (the model is in the package) | internet, and **your own** Typesafe API key |
 | Cost | none | billed per use by Typesafe |
 | Player's face data | stays on the device | is sent to a third party: get consent |
-| Speed | immediate | one network round trip per prediction |
+| Speed | approximately half a second to collect a window, plus local inference | the same window collection, plus a network request and any retries |
 | Calibration | works | works (about 70 extra requests while calibrating) |
 
 If you are unsure, start with **Local model**. It is the default.
@@ -663,6 +665,13 @@ Everything below is on the `NewFaceAuModel` component unless it says otherwise.
 
 ### Predicting
 
+**Calibration behavior:** `Predict()` applies ready calibration automatically. `TryPredict()` and
+`PredictDetailed()` return the original model prediction. To apply calibration to a successful
+detailed result, use `predictor.CalibratedEmotion(prediction) ?? prediction.Emotion`, then
+`prediction.ScoreOf(emotion)` for the selected emotion's model score. This is not a calibration
+confidence score. CSV recording applies ready calibration independently, so its emotion can differ
+from the original emotion in the detailed result.
+
 | Call | Await? | Returns | On failure |
 |---|---|---|---|
 | `TryPredict(float timeoutSeconds = 3, bool saveResult = true)` | yes | `PredictionOutcome` | `outcome.Ok == false`, `outcome.Error` set. **The most informative call** |
@@ -948,6 +957,10 @@ public sealed class AlwaysNeutralBackend : IEmotionBackend
 ```csharp
 predictor.UseBackend(new AlwaysNeutralBackend());
 ```
+
+If this example is in a custom assembly definition, reference `VcuSwimLab.Backends` and
+`VREmotionDetection` and keep Unity engine references enabled. The runtime reference is needed
+for `Emotion.Neutral`; see [backend dependency guidance](./Backends.md#writing-a-backend).
 
 Return errors with `BackendResult.Failure(code, message, Id)` instead of throwing. `Id` is saved
 inside calibrations, so change it when a change would make old calibrations meaningless. Details:

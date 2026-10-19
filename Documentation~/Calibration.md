@@ -39,7 +39,13 @@ else Debug.LogWarning(predictor.CalibrationError);
 
 If `CalibrateEmotion` returns false, call `StartCalibration` again and redo the calibration: an emotion that already has samples cannot be collected a second time, so a partial calibration is never mixed with a new attempt.
 
-When calibration is off, `CalibrateEmotion`, `CalibrateAll` and `LoadCalibration` return false, `BeginCalibrationEmotion` does nothing and `AddCalibrationSample` returns false. When it is on but `StartCalibration` was not called, they throw `InvalidOperationException`: that is a programming mistake.
+When calibration is off, `CalibrateEmotion`, `CalibrateAll` and `LoadCalibration` return false, `BeginCalibrationEmotion` does nothing and `AddCalibrationSample` returns false.
+
+When calibration is enabled, only the step-by-step collection calls (`CalibrateEmotion`, `BeginCalibrationEmotion`, and `AddCalibrationSample`) require a preceding `StartCalibration()` and throw `InvalidOperationException` if it is missing. `CalibrateAll()` starts a new calibration itself. `LoadCalibration()` loads an existing profile without requiring `StartCalibration()`.
+
+## Getting a calibrated prediction
+
+`Predict()` applies ready calibration automatically. `TryPredict()` and `PredictDetailed()` return the original model prediction, even when calibration is enabled. With a successful detailed result, use `CalibratedEmotion(prediction) ?? prediction.Emotion` to select the calibrated emotion (or fall back to the original), then `prediction.ScoreOf(emotion)` for that emotion's model score. This score is not a measure of calibration confidence.
 
 ## How it decides
 

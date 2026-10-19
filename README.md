@@ -82,6 +82,24 @@ public class FirstPrediction : MonoBehaviour
 ```
 
 `TryPredict()` distinguishes a successful prediction from errors such as unavailable tracking.
+It returns the original model prediction, even when calibration is enabled. `Predict()` applies
+ready calibration automatically; to keep typed error handling and apply calibration explicitly, use:
+
+```csharp
+var outcome = await predictor.TryPredict();
+if (outcome.Ok)
+{
+    var prediction = outcome.Prediction;
+    var emotion = predictor.CalibratedEmotion(prediction) ?? prediction.Emotion;
+    Debug.Log($"{emotion}: {prediction.ScoreOf(emotion):F2}");
+}
+else
+{
+    Debug.LogWarning(outcome.Error);
+}
+```
+
+`ScoreOf(emotion)` is the model's score for the selected emotion, not a calibration confidence score.
 For continuous predictions, use the [prediction-loop examples](./Documentation~/UsageGuide.md#8-recipes).
 
 ## How it works

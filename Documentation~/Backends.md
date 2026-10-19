@@ -49,6 +49,10 @@ public interface IEmotionBackend : IDisposable
 ## Writing a backend
 
 ```csharp
+using UnityEngine;
+using VcuSwimLab.Backends;
+using VcuSwimLab.VREmotionDetection;
+
 public sealed class ConstantBackend : IEmotionBackend
 {
     public string Id => "constant";
@@ -71,7 +75,9 @@ public sealed class ConstantBackend : IEmotionBackend
 }
 ```
 
-Reference only `VcuSwimLab.Backends` (and `VcuSwimLab.Calibration` if you use the profile). Your assembly then has no dependency on Local model or Jev.
+For this example, reference both `VcuSwimLab.Backends` and `VREmotionDetection` in your custom assembly definition: `Emotion.Neutral` is defined in the runtime assembly. Unity engine references must also be enabled for `Awaitable`.
+
+A backend that must remain independent of the runtime assembly should use the supplied `request.ClassNames` to identify output indices instead of the runtime's `Emotion` enum. Such a backend can reference only the contracts assembly (`VcuSwimLab.Backends`), plus `VcuSwimLab.Calibration` if it uses profile types, without referencing either concrete backend. Put the example above in a separate application assembly, not in the package's backend-contract assembly.
 
 ## Score conventions
 

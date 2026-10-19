@@ -27,7 +27,7 @@ Arrows point from a dependency to the assembly that uses it. The two backend ass
 | `VREmotionDetection` | `Runtime/Scripts` | `NewFaceAuModel`, `DeviceManager` and devices, `FacePrediction`, `CalibrationStore`, `ResultsRecorder`, `FaceAuModel` (obsolete), `SoundModel` (unfinished) |
 | `VREmotionDetection.Editor` | `Editor` | the menu that copies results from a headset |
 
-The existing public types (`NewFaceAuModel`, `FacePrediction`, `Emotion`, `DeviceManager`, `RingBuffer<T>` and the rest) stay in the global namespace so that existing projects compile unchanged. New types use the `VcuSwimLab.*` namespaces.
+Runtime types such as `NewFaceAuModel`, `FacePrediction`, `Emotion`, `DeviceManager`, and `RingBuffer<T>` use the `VcuSwimLab.VREmotionDetection` namespace. Add `using VcuSwimLab.VREmotionDetection;` when using them. Backend and calibration types have their own `VcuSwimLab.*` namespaces. See [Migration](Migration.md) for upgrading older code.
 
 ## A prediction, step by step
 
@@ -35,8 +35,8 @@ The existing public types (`NewFaceAuModel`, `FacePrediction`, `Emotion`, `Devic
 2. `FaceWindowSource` keeps the last 5 valid readings in a ring buffer. `TryPredict` clears it, waits for 5 fresh readings (3 s by default), and takes a deep copy.
 3. `NewFaceAuModel` builds a `BackendRequest` from the window, the class names and (if calibrated) the player's profile, and calls the active backend.
 4. The scores are validated (right count, finite, not negative) and the winner is chosen with `ScoreValidation.Argmax`.
-5. If calibration is on and ready, `CalibratedDecision` may change the emotion. The confidence is the backend's own answer for the emotion that is returned.
-6. The result is appended to the session CSV unless `saveResult` is false.
+5. `TryPredict` and `PredictDetailed` return the original model prediction. `Predict` applies ready calibration automatically; callers using the detailed result can apply it with `CalibratedEmotion(prediction) ?? prediction.Emotion`. Use `prediction.ScoreOf(emotion)` for the selected emotion's model score.
+6. Unless `saveResult` is false, eligible outcomes are recorded in the session CSV. Recording applies ready calibration independently, so the recorded emotion can differ from the original emotion returned by `TryPredict` or `PredictDetailed`. See [Diagnostics](Diagnostics.md#results-file) for errors that are not recorded.
 
 At most one prediction runs at a time per `NewFaceAuModel`. A second concurrent call returns a `Busy` error instead of corrupting the first one's window.
 

@@ -18,12 +18,15 @@ internal sealed class HarnessRig : IDisposable
     private readonly Task feeder;
     private volatile float[] currentFace = Face(0);
     private volatile bool valid = true;
+    private volatile float gameClockScale;
 
     public HarnessRig(bool useCalibration = true, bool withModel = true, bool start = true, string modelName = "harness-model",
-                      string storageFolder = null)
+                      string storageFolder = null, float gameClockScale = 1f)
     {
+        this.gameClockScale = gameClockScale;
         Application.persistentDataPath = storageFolder ?? Path.Combine(Path.GetTempPath(), "rig-" + Guid.NewGuid().ToString("N"));
         Time.Override = 0f;
+        Time.UnscaledOverride = 0f;
         Worker.Canned = Scores(0);
         Worker.Source = null;
         Worker.ReadbackDelayMs = 0;
@@ -44,13 +47,18 @@ internal sealed class HarnessRig : IDisposable
 
         Field(Model, "useCalibration", useCalibration);
 
+        // Two clocks, as in Unity: the unscaled one always advances, the game clock advances by GameClockScale times as much
+        // (0 = Time.timeScale 0, a paused game).
         float clock = 0f;
+        float gameClock = 0f;
         feeder = Task.Run(async () =>
         {
             while (!stop.IsCancellationRequested)
             {
                 clock += 0.1f;
-                Time.Override = clock;
+                gameClock += 0.1f * gameClockScale;
+                Time.UnscaledOverride = clock;
+                Time.Override = gameClock;
                 Ovr.ValidExpressions = valid;
                 Ovr.Values = (float[])currentFace.Clone();
                 Call(Devices, "Update");
@@ -62,6 +70,13 @@ internal sealed class HarnessRig : IDisposable
         {
             Model.Start();
         }
+    }
+
+    // Like Time.timeScale: 1 = normal, 0.5 = slow motion, 0 = paused. Can be changed while the rig runs.
+    public float GameClockScale
+    {
+        get => gameClockScale;
+        set => gameClockScale = value;
     }
 
     public GameObject Host { get; }
@@ -106,5 +121,7 @@ internal sealed class HarnessRig : IDisposable
         stop.Cancel();
         try { feeder.Wait(1000); } catch (AggregateException) { }
         Time.Override = null;
+        Time.UnscaledOverride = null;
+        Awaitable.ScaledWaits = false;
     }
 }

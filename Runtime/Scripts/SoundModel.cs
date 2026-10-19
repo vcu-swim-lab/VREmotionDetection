@@ -75,7 +75,7 @@ namespace VcuSwimLab.VREmotionDetection
 
         public async Awaitable<(Emotion, float)> Predict(AudioClip clip)
         {
-            var norm = PrepareAudio(clip);
+            using var norm = PrepareAudio(clip);
             return await Predict(norm);
         }
 

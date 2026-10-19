@@ -19,7 +19,8 @@ namespace VcuSwimLab.VREmotionDetection
             pending.Clear();
             pending.AddRange(devices.Keys);
 
-            float now = Time.time;
+            // Real time: the headset delivers faces regardless of Time.timeScale, and the model expects about 10 readings a second.
+            float now = Time.unscaledTime;
             foreach (var ty in pending)
             {
                 if (!devices.TryGetValue(ty, out var device) ||
@@ -40,6 +41,44 @@ namespace VcuSwimLab.VREmotionDetection
                     {
                         Debug.LogWarning($"{nameof(DeviceManager)}: polling {ty} failed ({e.GetType().Name}: {e.Message}); it will be retried.");
                     }
+                }
+            }
+        }
+
+        void OnDisable()
+        {
+            ReleaseDevices(destroying: false);
+        }
+
+        void OnDestroy()
+        {
+            ReleaseDevices(destroying: true);
+        }
+
+        // Stops what the devices hold (the microphone). On destroy every device is dropped; on disable only those that cannot
+        // be used any more, so Require makes a new one, while the face device stays because the window source listens to it.
+        private void ReleaseDevices(bool destroying)
+        {
+            pending.Clear();
+            pending.AddRange(devices.Keys);
+
+            foreach (var ty in pending)
+            {
+                bool unusable = false;
+                try
+                {
+                    unusable = devices[ty].Release();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"{nameof(DeviceManager)}: releasing {ty} failed ({e.GetType().Name}: {e.Message}).");
+                }
+
+                if (destroying || unusable)
+                {
+                    devices.Remove(ty);
+                    nextPollTime.Remove(ty);
+                    reported.Remove(ty);
                 }
             }
         }
@@ -76,7 +115,7 @@ namespace VcuSwimLab.VREmotionDetection
 
             var device = DeviceRegistry.Create(ty, gameObject);
             devices[ty] = device;
-            nextPollTime[ty] = Time.time;
+            nextPollTime[ty] = Time.unscaledTime;
             return device;
         }
     }

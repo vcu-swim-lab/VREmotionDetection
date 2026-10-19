@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -75,6 +76,39 @@ public class PackageContractTests
             Assert.AreEqual("alias-model", rig.Model.ActiveBackendId, "the backend id is still the model asset's name, so saved calibrations match");
             Assert.IsTrue((await rig.Model.TryPredict(saveResult: false)).Ok);
         }
+    }
+
+    // The model keeps this GUID when its file is renamed, so scenes and prefabs that reference the asset keep finding it.
+    private const string ModelGuid = "c8c2538830cca7d42b35813f72fa93bf";
+
+    private static string PackageRoot()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir != null; dir = dir.Parent)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "package.json")) && Directory.Exists(Path.Combine(dir.FullName, "Runtime")))
+            {
+                return dir.FullName;
+            }
+        }
+
+        throw new InvalidOperationException("package root not found above " + AppContext.BaseDirectory);
+    }
+
+    [Test]
+    public void The_default_model_path_names_the_one_bundled_model_and_its_meta_keeps_the_guid()
+    {
+        const string packagePrefix = "Packages/com.vcu-swim-lab.vr-emotion-detection/";
+        Assert.IsTrue(NewFaceAuModel.DefaultModelPath.StartsWith(packagePrefix));
+        string model = Path.Combine(PackageRoot(), NewFaceAuModel.DefaultModelPath.Substring(packagePrefix.Length));
+
+        Assert.IsTrue(File.Exists(model), "DefaultModelPath must point at a file in the package: " + model);
+        Assert.IsTrue(File.Exists(model + ".meta"), "Unity needs the .meta next to the model");
+        StringAssert.Contains("guid: " + ModelGuid, File.ReadAllText(model + ".meta"));
+
+        string folder = Path.GetDirectoryName(model);
+        CollectionAssert.AreEqual(new[] { Path.GetFileName(model) },
+                                  Directory.GetFiles(folder, "*.onnx").Select(Path.GetFileName).ToArray(),
+                                  "the package ships exactly one model");
     }
 
     [Test]

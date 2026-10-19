@@ -126,7 +126,13 @@ namespace UnityEngine
 
         public static float? Override;
 
+        // The clock that ignores Time.timeScale. Falls back to Override so tests that only drive one clock still work;
+        // a test that wants a frozen game clock sets Override and UnscaledOverride apart.
+        public static float? UnscaledOverride;
+
         public static float time => Override ?? realtimeSinceStartup;
+
+        public static float unscaledTime => UnscaledOverride ?? Override ?? realtimeSinceStartup;
 
         public static float realtimeSinceStartup => (float)Clock.Elapsed.TotalSeconds;
     }
@@ -171,14 +177,42 @@ namespace UnityEngine
     public static class Microphone
     {
         public static int StartCalls;
+        public static int EndCalls;
+        public static int PositionCalls;
+        public static bool Recording;
+
+        // What GetPosition reports; a test sets 0 to model a microphone that has not produced samples yet.
+        public static int Position = 1;
+
+        public static void Reset()
+        {
+            StartCalls = 0;
+            EndCalls = 0;
+            PositionCalls = 0;
+            Recording = false;
+            Position = 1;
+        }
 
         public static AudioClip Start(string device, bool loop, int length, int frequency)
         {
             StartCalls++;
+            Recording = true;
             return new AudioClip();
         }
 
-        public static int GetPosition(string device) => 1;
+        public static void End(string device)
+        {
+            EndCalls++;
+            Recording = false;
+        }
+
+        public static bool IsRecording(string device) => Recording;
+
+        public static int GetPosition(string device)
+        {
+            System.Threading.Interlocked.Increment(ref PositionCalls);
+            return Position;
+        }
     }
 
     public enum RuntimePlatform { WindowsEditor, LinuxEditor, OSXEditor, Android }
@@ -316,13 +350,31 @@ namespace UnityEngine
 
         public static int FrameDelayMs = 1;
 
+        // When true, WaitForSecondsAsync follows the game clock (Time.time), as a wait scaled by Time.timeScale does:
+        // with a frozen game clock it never finishes. Off by default so existing tests keep their real-time waits.
+        public static bool ScaledWaits;
+
         public static Awaitable NextFrameAsync() => new Awaitable(Task.Delay(FrameDelayMs));
 
-        public static Awaitable WaitForSecondsAsync(float seconds) => new Awaitable(Task.Delay((int)(seconds * 1000)));
+        public static Awaitable NextFrameAsync(System.Threading.CancellationToken cancellationToken) =>
+            new Awaitable(Task.Delay(FrameDelayMs, cancellationToken));
+
+        public static Awaitable WaitForSecondsAsync(float seconds) =>
+            new Awaitable(ScaledWaits ? ScaledDelay(seconds, default) : Task.Delay((int)(seconds * 1000)));
 
         // Like Unity: a cancelled token ends the wait with an OperationCanceledException.
         public static Awaitable WaitForSecondsAsync(float seconds, System.Threading.CancellationToken cancellationToken) =>
-            new Awaitable(Task.Delay((int)(seconds * 1000), cancellationToken));
+            new Awaitable(ScaledWaits ? ScaledDelay(seconds, cancellationToken) : Task.Delay((int)(seconds * 1000), cancellationToken));
+
+        private static async Task ScaledDelay(float seconds, System.Threading.CancellationToken cancellationToken)
+        {
+            float until = Time.time + seconds;
+            while (Time.time < until)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await Task.Delay(1, cancellationToken);
+            }
+        }
     }
 
     [AsyncMethodBuilder(typeof(AwaitableBuilder<>))]
@@ -405,7 +457,30 @@ namespace Unity.InferenceEngine
 
     public abstract class Tensor : IDisposable
     {
-        public void Dispose() { }
+        private static int live;
+
+        private readonly bool tracked;
+        private int disposed;
+
+        // Tensors that were created and not yet disposed (worker-owned outputs from PeekOutput are not counted),
+        // so a test can prove that a method disposes what it creates.
+        public static int Live => System.Threading.Volatile.Read(ref live);
+
+        protected Tensor(bool tracked = true)
+        {
+            this.tracked = tracked;
+            if (tracked) System.Threading.Interlocked.Increment(ref live);
+        }
+
+        public bool IsDisposed => System.Threading.Volatile.Read(ref disposed) == 1;
+
+        public void Dispose()
+        {
+            if (System.Threading.Interlocked.Exchange(ref disposed, 1) == 0 && tracked)
+            {
+                System.Threading.Interlocked.Decrement(ref live);
+            }
+        }
 
         public abstract UnityEngine.Awaitable<Tensor> ReadbackAndCloneAsync();
     }
@@ -416,7 +491,8 @@ namespace Unity.InferenceEngine
 
         public TensorShape shape { get; }
 
-        public Tensor(TensorShape shape, T[] data)
+        public Tensor(TensorShape shape, T[] data, bool tracked = true)
+            : base(tracked)
         {
             this.shape = shape;
             this.data = data;
@@ -424,13 +500,14 @@ namespace Unity.InferenceEngine
 
         public T[] DownloadToArray() => (T[])data.Clone();
 
+        // Like Unity: the readback is a clone the caller owns (and must dispose).
         public override UnityEngine.Awaitable<Tensor> ReadbackAndCloneAsync() =>
-            new UnityEngine.Awaitable<Tensor>(Delayed(this));
+            new UnityEngine.Awaitable<Tensor>(Delayed());
 
-        private static async Task<Tensor> Delayed(Tensor tensor)
+        private async Task<Tensor> Delayed()
         {
             if (Worker.ReadbackDelayMs > 0) await Task.Delay(Worker.ReadbackDelayMs);
-            return tensor;
+            return new Tensor<T>(shape, (T[])data.Clone());
         }
     }
 
@@ -445,7 +522,8 @@ namespace Unity.InferenceEngine
 
         public void Schedule(Tensor input) { Runs++; }
 
-        public Tensor PeekOutput() => new Tensor<float>(new TensorShape(1, 7), (Source?.Invoke() ?? Canned).ToArray());
+        // The worker owns what PeekOutput returns, so it is not counted as a tensor the caller must dispose.
+        public Tensor PeekOutput() => new Tensor<float>(new TensorShape(1, 7), (Source?.Invoke() ?? Canned).ToArray(), tracked: false);
 
         public void Dispose() { }
     }

@@ -163,9 +163,11 @@ public class PublicApiContract
         Assert.AreEqual(5, NewFaceAuModel.WindowFrames);
         Assert.AreEqual(70, NewFaceAuModel.FeaturesPerFrame);
         Assert.AreEqual(3f, NewFaceAuModel.DefaultTimeoutSeconds);
+        // The bundled model file was renamed on purpose (its GUID did not change; a saved calibration records the file name as
+        // the backend id, so calibrations saved before the rename are refused). PackageContractTests checks the file is there.
         Assert.AreEqual(
             "Packages/com.vcu-swim-lab.vr-emotion-detection/Runtime/Models/"
-            + "sparseVR_teacher_model_acted_only_vol-aug-k1_with-EmojiHero.onnx",
+            + "sparseVR_teacher_model_acted_only_vol-aug-k1.onnx",
             NewFaceAuModel.DefaultModelPath);
 
         CollectionAssert.AreEqual(

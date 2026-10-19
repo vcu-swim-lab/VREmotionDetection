@@ -18,7 +18,7 @@ namespace VcuSwimLab.VREmotionDetection
 
         public const string DefaultModelPath =
             "Packages/com.vcu-swim-lab.vr-emotion-detection/Runtime/Models/" +
-            "sparseVR_teacher_model_acted_only_vol-aug-k1_with-EmojiHero.onnx";
+            "sparseVR_teacher_model_acted_only_vol-aug-k1.onnx";
 
         private const string CalibrationOffMessage =
             "calibration is off: tick \"Use Calibration\" on the predictor, or set UseCalibration = true";
@@ -66,6 +66,8 @@ namespace VcuSwimLab.VREmotionDetection
         private bool started;
         private object busyOwner;
         private int epoch;
+        private int calibrationSwitchedOff;
+        private CalibrationRun activeRun;
 
         public event Action<PredictionError> PredictionFailed;
 
@@ -80,7 +82,15 @@ namespace VcuSwimLab.VREmotionDetection
         public bool UseCalibration
         {
             get => useCalibration;
-            set => useCalibration = value;
+            set
+            {
+                if (useCalibration && !value)
+                {
+                    StopRunBecauseCalibrationIsOff();
+                }
+
+                useCalibration = value;
+            }
         }
 
         public bool IsCalibrated => useCalibration && calibrator != null && calibrator.IsReady;
@@ -323,48 +333,72 @@ namespace VcuSwimLab.VREmotionDetection
                 throw new InvalidOperationException("call StartCalibration before CalibrateEmotion");
             }
 
-            if (secondsBetweenSamples < 0f)
+            ValidateSampling(secondsBetweenSamples, maxAttempts);
+
+            var run = StartRun();
+            try
             {
-                throw new ArgumentOutOfRangeException(nameof(secondsBetweenSamples), secondsBetweenSamples, "must be 0 or more");
+                return await CollectEmotion(emotion, secondsBetweenSamples, maxAttempts, run);
+            }
+            finally
+            {
+                EndRun(run);
+            }
+        }
+
+        public async Awaitable<bool> CalibrateAll(Func<Emotion, Awaitable> prompt = null,
+                                                  float secondsBetweenSamples = 1f, int maxAttempts = 20)
+        {
+            if (!useCalibration)
+            {
+                StartCalibration();
+                return false;
+            }
+
+            ValidateSampling(secondsBetweenSamples, maxAttempts);
+
+            StartCalibration();
+            var run = StartRun();
+            try
+            {
+                foreach (Emotion emotion in Enum.GetValues(typeof(Emotion)))
+                {
+                    if (prompt != null)
+                    {
+                        await prompt(emotion);
+                    }
+
+                    if (Interrupted(run))
+                    {
+                        return Abandon(run);
+                    }
+
+                    if (!await CollectEmotion(emotion, secondsBetweenSamples, maxAttempts, run))
+                    {
+                        return false;
+                    }
+                }
+
+                return FinishCalibration();
+            }
+            finally
+            {
+                EndRun(run);
+            }
+        }
+
+        private static void ValidateSampling(float secondsBetweenSamples, int maxAttempts)
+        {
+            if (!(secondsBetweenSamples >= 0f) || float.IsInfinity(secondsBetweenSamples))
+            {
+                throw new ArgumentOutOfRangeException(nameof(secondsBetweenSamples), secondsBetweenSamples,
+                                                      "must be a finite number, 0 or more");
             }
 
             if (maxAttempts < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(maxAttempts), maxAttempts, "must be 1 or more");
             }
-
-            return await CollectEmotion(emotion, secondsBetweenSamples, maxAttempts, StartRun());
-        }
-
-        public async Awaitable<bool> CalibrateAll(Func<Emotion, Awaitable> prompt = null,
-                                                  float secondsBetweenSamples = 1f, int maxAttempts = 20)
-        {
-            StartCalibration();
-            if (!useCalibration)
-            {
-                return false;
-            }
-
-            var run = StartRun();
-            foreach (Emotion emotion in Enum.GetValues(typeof(Emotion)))
-            {
-                if (prompt != null)
-                {
-                    await prompt(emotion);
-                }
-
-                if (Interrupted(run))
-                {
-                    return Abandon(run);
-                }
-
-                if (!await CollectEmotion(emotion, secondsBetweenSamples, maxAttempts, run))
-                {
-                    return false;
-                }
-            }
-
-            return FinishCalibration();
         }
 
         private sealed class CalibrationRun
@@ -372,27 +406,61 @@ namespace VcuSwimLab.VREmotionDetection
             public MovementCalibrator Session;
             public string BackendId;
             public int? Epoch;
+            public int SwitchedOff;
+            public object PredictionOwner;
         }
 
         private bool Ready => started && windowSource != null && backend != null;
 
         private CalibrationRun StartRun()
         {
-            return new CalibrationRun { Session = calibrator, BackendId = CurrentBackendId, Epoch = Ready ? epoch : (int?)null };
+            var run = new CalibrationRun
+            {
+                Session = calibrator,
+                BackendId = CurrentBackendId,
+                Epoch = Ready ? epoch : (int?)null,
+                SwitchedOff = calibrationSwitchedOff,
+            };
+            activeRun = run;
+            return run;
+        }
+
+        private void EndRun(CalibrationRun run)
+        {
+            if (ReferenceEquals(activeRun, run))
+            {
+                activeRun = null;
+            }
+        }
+
+        private void StopRunBecauseCalibrationIsOff()
+        {
+            calibrationSwitchedOff++;
+
+            // One prediction runs at a time: if it is the calibration's own, end it now so a Jev request or retry delay of the
+            // calibration stops, and leave any other prediction alone.
+            var owner = activeRun?.PredictionOwner;
+            if (owner != null && ReferenceEquals(busyOwner, owner))
+            {
+                EndSession();
+                CancelPending(backend);
+            }
         }
 
         private bool Interrupted(CalibrationRun run)
         {
             return !ReferenceEquals(run.Session, calibrator)
                    || run.BackendId != CurrentBackendId
-                   || (run.Epoch.HasValue && run.Epoch.Value != epoch);
+                   || (run.Epoch.HasValue && run.Epoch.Value != epoch)
+                   || !useCalibration
+                   || run.SwitchedOff != calibrationSwitchedOff;
         }
 
         private bool Abandon(CalibrationRun run)
         {
             if (calibrator == null || ReferenceEquals(run.Session, calibrator))
             {
-                calibrationError = "the calibration was interrupted: it was cleared, the backend changed or the predictor was disabled";
+                calibrationError = "the calibration was interrupted: it was cleared, the backend changed, the predictor was disabled or calibration was switched off";
             }
 
             return false;
@@ -413,9 +481,9 @@ namespace VcuSwimLab.VREmotionDetection
                     return false;
                 }
 
-                float nextSample = Time.time + secondsBetweenSamples;
+                float nextSample = Time.unscaledTime + secondsBetweenSamples;
 
-                var outcome = await PredictCore(DefaultTimeoutSeconds);
+                var outcome = await PredictCore(DefaultTimeoutSeconds, run);
                 run.Epoch ??= epoch;
                 if (Interrupted(run))
                 {
@@ -427,10 +495,10 @@ namespace VcuSwimLab.VREmotionDetection
                     session.Observe(CalibrationScores(outcome.Prediction), outcome.Prediction.Window);
                 }
 
-                float remaining = nextSample - Time.time;
+                float remaining = nextSample - Time.unscaledTime;
                 if (remaining > 0)
                 {
-                    await Awaitable.WaitForSecondsAsync(remaining);
+                    await WaitUnscaledAsync(remaining, run);
                     if (Interrupted(run))
                     {
                         return Abandon(run);
@@ -439,6 +507,17 @@ namespace VcuSwimLab.VREmotionDetection
             }
 
             return true;
+        }
+
+        // The headset delivers faces in real time, so the spacing of calibration samples must not follow Time.timeScale.
+        // Ends early when the run is interrupted, so a long interval cannot keep a stopped calibration alive.
+        private async Awaitable WaitUnscaledAsync(float seconds, CalibrationRun run)
+        {
+            float until = Time.unscaledTime + seconds;
+            while (Time.unscaledTime < until && !Interrupted(run))
+            {
+                await Awaitable.NextFrameAsync();
+            }
         }
 
         public bool FinishCalibration()
@@ -657,7 +736,7 @@ namespace VcuSwimLab.VREmotionDetection
                 : null;
         }
 
-        private async Awaitable<PredictionOutcome> PredictCore(float timeoutSeconds)
+        private async Awaitable<PredictionOutcome> PredictCore(float timeoutSeconds, CalibrationRun run = null)
         {
             if (!(timeoutSeconds > 0f))
             {
@@ -698,6 +777,11 @@ namespace VcuSwimLab.VREmotionDetection
             var source = windowSource;
             var owner = new object();
             busyOwner = owner;
+            if (run != null)
+            {
+                run.PredictionOwner = owner;
+            }
+
             try
             {
                 var window = await source.AwaitWindowAsync(timeoutSeconds);
@@ -765,6 +849,11 @@ namespace VcuSwimLab.VREmotionDetection
                 if (ReferenceEquals(busyOwner, owner))
                 {
                     busyOwner = null;
+                }
+
+                if (run != null && ReferenceEquals(run.PredictionOwner, owner))
+                {
+                    run.PredictionOwner = null;
                 }
             }
         }

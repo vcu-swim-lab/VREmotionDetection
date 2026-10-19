@@ -16,6 +16,8 @@ namespace VcuSwimLab.VREmotionDetection
         public const float PermissionTimeoutSeconds = 60f;
 
         private AudioClip sound;
+        private volatile bool released;
+        private bool recording;
 
         public SoundDevice(GameObject go)
             : base(go)
@@ -37,6 +39,19 @@ namespace VcuSwimLab.VREmotionDetection
             return (PollSeconds, true);
         }
 
+        internal override bool Release()
+        {
+            released = true;
+            if (recording)
+            {
+                recording = false;
+                Microphone.End(null);
+            }
+
+            sound = null;
+            return true;
+        }
+
         private async void StartRecordingAsync()
         {
             try
@@ -49,6 +64,11 @@ namespace VcuSwimLab.VREmotionDetection
                     float permissionDeadline = Time.realtimeSinceStartup + PermissionTimeoutSeconds;
                     while (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
                     {
+                        if (released)
+                        {
+                            return;
+                        }
+
                         if (Time.realtimeSinceStartup >= permissionDeadline)
                         {
                             Debug.LogWarning($"{nameof(SoundDevice)}: the microphone permission was not granted.");
@@ -60,11 +80,22 @@ namespace VcuSwimLab.VREmotionDetection
                 }
 #endif
 
+                if (released)
+                {
+                    return;
+                }
+
                 sound = Microphone.Start(null, true, ClipSeconds, SampleRateHz);
+                recording = true;
 
                 float deadline = Time.realtimeSinceStartup + StartupTimeoutSeconds;
                 while (!(Microphone.GetPosition(null) > 0))
                 {
+                    if (released)
+                    {
+                        return;
+                    }
+
                     if (Time.realtimeSinceStartup >= deadline)
                     {
                         Debug.LogWarning($"{nameof(SoundDevice)}: the microphone did not start within {StartupTimeoutSeconds:F0}s.");

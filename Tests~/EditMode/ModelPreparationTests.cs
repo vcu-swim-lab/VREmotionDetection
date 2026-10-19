@@ -44,7 +44,7 @@ public class ModelPreparationTests
     [Test]
     public void FaceModel_WithoutAppendedSoftmax_OutputsProbabilities()
     {
-        var asset = LoadAsset("sparseVR_teacher_model_acted_only_vol-aug-k1_with-EmojiHero.onnx");
+        var asset = LoadAsset("sparseVR_teacher_model_acted_only_vol-aug-k1.onnx");
 
         var model = OnnxModelLoader.Prepare(asset, appendSoftmax: false);
         var scores = RunOnZeros(model, new TensorShape(1, 5, 70));

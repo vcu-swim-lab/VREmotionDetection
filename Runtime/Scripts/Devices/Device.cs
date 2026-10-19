@@ -13,5 +13,9 @@ namespace VcuSwimLab.VREmotionDetection
         internal delegate void PollDelegate(InputType type, float[] data);
 
         internal PollDelegate OnPoll;
+
+        // Called when the owner shuts down. A device that holds hardware (the microphone) stops it here and returns true
+        // when it cannot be used any more, so DeviceManager.Require makes a new one next time.
+        internal virtual bool Release() => false;
     }
 }

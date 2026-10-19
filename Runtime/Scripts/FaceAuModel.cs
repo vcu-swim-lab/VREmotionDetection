@@ -74,7 +74,7 @@ namespace VcuSwimLab.VREmotionDetection
                 await Awaitable.NextFrameAsync();
             }
 
-            var input = inputBuffer.ToTensor();
+            using var input = inputBuffer.ToTensor();
 
             return await Infer(input);
         }

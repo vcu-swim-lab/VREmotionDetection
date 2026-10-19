@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Compile check only: the README/UsageGuide recipes and the package's own samples must build against the
+       current public API. -->
+  <PropertyGroup>
+    <AssemblyName>ReadmeExamples</AssemblyName>
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+    <Compile Include="$(PackageRoot)/Samples~/**/*.cs" />
+    <ProjectReference Include="../Stubs/Stubs.csproj" />
+    <ProjectReference Include="../Calibration/Calibration.csproj" />
+    <ProjectReference Include="../Backends/Backends.csproj" />
+    <ProjectReference Include="../Jev/Jev.csproj" />
+    <ProjectReference Include="../Runtime/Runtime.csproj" />
+  </ItemGroup>
+</Project>

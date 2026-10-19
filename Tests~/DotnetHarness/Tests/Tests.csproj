@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>VREmotionDetection.Editor.Tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <DefineConstants Condition="'$(HasNewLayout)' == 'true'">$(DefineConstants);NEW_API</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+    <Compile Include="$(EditModeDir)/*.cs" Exclude="$(EditModeDir)/ModelCalibrationEndToEndTests.cs;$(EditModeDir)/ModelPreparationTests.cs" />
+    <None Include="../Fixtures/**" CopyToOutputDirectory="PreserveNewest" LinkBase="Fixtures" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <ProjectReference Include="../Stubs/Stubs.csproj" />
+    <ProjectReference Include="../Calibration/Calibration.csproj" />
+    <ProjectReference Include="../Backends/Backends.csproj" />
+    <ProjectReference Include="../SparseVr/SparseVr.csproj" />
+    <ProjectReference Include="../Jev/Jev.csproj" />
+    <ProjectReference Include="../Runtime/Runtime.csproj" />
+    <ProjectReference Include="../Editor/Editor.csproj" />
+  </ItemGroup>
+</Project>

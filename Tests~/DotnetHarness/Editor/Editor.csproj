@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>VREmotionDetection.Editor</AssemblyName>
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(PackageRoot)/Editor/*.cs" Exclude="$(PackageRoot)/Editor/AssemblyInfo.cs" />
+    <Compile Include="../Harness/InternalsVisibleTo.cs" />
+    <ProjectReference Include="../Stubs/Stubs.csproj" />
+    <ProjectReference Include="../EditorStubs/EditorStubs.csproj" />
+    <ProjectReference Include="../Runtime/Runtime.csproj" />
+  </ItemGroup>
+</Project>

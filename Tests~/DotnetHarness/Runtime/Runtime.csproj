@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>VREmotionDetection</AssemblyName>
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(PackageRoot)/Runtime/AssemblyInfo.cs" Condition="Exists('$(PackageRoot)/Runtime/AssemblyInfo.cs')" />
+    <Compile Include="$(PackageRoot)/Runtime/Scripts/**/*.cs" />
+    <Compile Include="../Harness/InternalsVisibleTo.cs" />
+    <ProjectReference Include="../Stubs/Stubs.csproj" />
+    <ProjectReference Include="../Calibration/Calibration.csproj" />
+    <ProjectReference Include="../Backends/Backends.csproj" />
+    <ProjectReference Include="../SparseVr/SparseVr.csproj" />
+    <ProjectReference Include="../Jev/Jev.csproj" />
+  </ItemGroup>
+</Project>

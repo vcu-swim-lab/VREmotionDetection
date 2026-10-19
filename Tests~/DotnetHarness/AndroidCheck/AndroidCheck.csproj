@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Compile check only: the Android-only branch of the sound device (UNITY_ANDROID, not in the editor). -->
+  <PropertyGroup>
+    <AssemblyName>AndroidCheck</AssemblyName>
+    <DefineConstants>$(DefineConstants);UNITY_ANDROID</DefineConstants>
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(PackageRoot)/Runtime/Scripts/**/*.cs" />
+    <Compile Include="AndroidStubs.cs" />
+    <ProjectReference Include="../Stubs/Stubs.csproj" />
+    <ProjectReference Include="../Calibration/Calibration.csproj" />
+    <ProjectReference Include="../Backends/Backends.csproj" />
+    <ProjectReference Include="../SparseVr/SparseVr.csproj" />
+    <ProjectReference Include="../Jev/Jev.csproj" />
+  </ItemGroup>
+</Project>

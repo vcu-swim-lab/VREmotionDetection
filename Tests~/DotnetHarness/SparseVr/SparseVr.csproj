@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>VcuSwimLab.Backends.SparseVr</AssemblyName>
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(PackageRoot)/Runtime/Backends/SparseVr/*.cs" />
+    <Compile Include="../Harness/InternalsVisibleTo.cs" />
+    <ProjectReference Include="../Stubs/Stubs.csproj" />
+    <ProjectReference Include="../Calibration/Calibration.csproj" />
+    <ProjectReference Include="../Backends/Backends.csproj" />
+  </ItemGroup>
+</Project>

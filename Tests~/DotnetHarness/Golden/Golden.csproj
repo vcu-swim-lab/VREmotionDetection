@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Only the golden end-to-end scenario, so it builds against OLDER package source too (run-tests.sh, option compare):
+       the full Tests project uses APIs that older versions do not have.
+       -p:PackageRoot=<folder with Runtime/> picks the package to run; -p:LegacyGlobalNamespace=true is for versions
+       from before the types moved into VcuSwimLab.VREmotionDetection. -->
+  <PropertyGroup>
+    <AssemblyName>VREmotionDetection.Editor.Tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <DefineConstants Condition="'$(LegacyGlobalNamespace)' == 'true'">$(DefineConstants);LEGACY_GLOBAL_NAMESPACE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Tests/GoldenScenario.cs" />
+    <Compile Include="../Tests/HarnessRig.cs" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <ProjectReference Include="../Stubs/Stubs.csproj" />
+    <ProjectReference Include="../Calibration/Calibration.csproj" />
+    <ProjectReference Include="../Backends/Backends.csproj" />
+    <ProjectReference Include="../SparseVr/SparseVr.csproj" />
+    <ProjectReference Include="../Jev/Jev.csproj" />
+    <ProjectReference Include="../Runtime/Runtime.csproj" />
+  </ItemGroup>
+</Project>

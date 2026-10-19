@@ -109,3 +109,9 @@ InitTestScene*.unity*
 # Lab-internal release guide, not part of the package
 /PUBLISHING_GUIDE.md.pdf
 /LIBRARY_ISSUE_REPORT.md
+
+# The dotnet test harness: its project files are source (override *.csproj above); its build output is not.
+!/Tests~/DotnetHarness/**/*.csproj
+/Tests~/DotnetHarness/artifacts/
+/Tests~/DotnetHarness/**/bin/
+/Tests~/DotnetHarness/**/obj/

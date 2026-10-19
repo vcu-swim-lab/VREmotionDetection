@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- VcuSwimLab.Calibration: noEngineReferences, so no Stubs reference - any Unity use fails to compile. -->
+  <PropertyGroup>
+    <AssemblyName>VcuSwimLab.Calibration</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(PackageRoot)/Runtime/Calibration/*.cs" />
+    <Compile Include="../Harness/InternalsVisibleTo.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <NoWarn>CS0219;CS0649;CS0169;CS0414;CS0618;CS1998;CS8632</NoWarn>
+    <PackageRoot Condition="'$(PackageRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../..'))</PackageRoot>
+    <EditModeDir Condition="'$(EditModeDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../EditMode'))</EditModeDir>
+    <HasNewLayout Condition="Exists('$(PackageRoot)/Runtime/Backends')">true</HasNewLayout>
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
+  </PropertyGroup>
+</Project>

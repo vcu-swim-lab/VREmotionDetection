@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- UnityEditor stand-ins. Only the Editor assembly and the Unity-only check reference this, so a stray
+       `using UnityEditor` in Runtime code still fails to compile, as it would in a player build. -->
+  <PropertyGroup>
+    <AssemblyName>EditorStubs</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+  </ItemGroup>
+</Project>

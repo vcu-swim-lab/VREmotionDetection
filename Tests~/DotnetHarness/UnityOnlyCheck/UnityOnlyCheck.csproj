@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Compile check only (never run): the two EditMode tests that need the real ONNX model and a real Unity.
+       Compiled together with the runtime scripts with UNITY_EDITOR defined, as in the editor. -->
+  <PropertyGroup>
+    <AssemblyName>UnityOnlyCheck</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <DefineConstants>$(DefineConstants);UNITY_EDITOR</DefineConstants>
+    <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(PackageRoot)/Runtime/Scripts/**/*.cs" />
+    <Compile Include="$(EditModeDir)/ModelCalibrationEndToEndTests.cs" />
+    <Compile Include="$(EditModeDir)/ModelPreparationTests.cs" />
+    <Compile Include="UnityOnlyStubs.cs" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <ProjectReference Include="../Stubs/Stubs.csproj" />
+    <ProjectReference Include="../EditorStubs/EditorStubs.csproj" />
+    <ProjectReference Include="../Calibration/Calibration.csproj" />
+    <ProjectReference Include="../Backends/Backends.csproj" />
+    <ProjectReference Include="../SparseVr/SparseVr.csproj" />
+    <ProjectReference Include="../Jev/Jev.csproj" />
+  </ItemGroup>
+</Project>

@@ -41,6 +41,10 @@ If `CalibrateEmotion` returns false, call `StartCalibration` again and redo the 
 
 When calibration is off, `CalibrateEmotion`, `CalibrateAll` and `LoadCalibration` return false, `BeginCalibrationEmotion` does nothing and `AddCalibrationSample` returns false.
 
+Otherwise `CalibrateEmotion` and `CalibrateAll` check their arguments first: `secondsBetweenSamples` must be a finite number, 0 or more, and `maxAttempts` 1 or more, or they throw `ArgumentOutOfRangeException`. A rejected call changes nothing, so it does not discard a calibration you already have. The spacing between samples is real time: pausing the game (`Time.timeScale = 0`) does not stall or slow a calibration.
+
+Setting `UseCalibration` to `false` while a calibration is running stops it. `CalibrateAll` and `CalibrateEmotion` return false, `CalibrationError` says the calibration was switched off, and a Jev request or retry delay belonging to that calibration is aborted (a prediction of your own is not). A calibration that was already finished, and saved files, are kept: it simply is not applied while the setting is off, and applies again when you switch it back on.
+
 When calibration is enabled, only the step-by-step collection calls (`CalibrateEmotion`, `BeginCalibrationEmotion`, and `AddCalibrationSample`) require a preceding `StartCalibration()` and throw `InvalidOperationException` if it is missing. `CalibrateAll()` starts a new calibration itself. `LoadCalibration()` loads an existing profile without requiring `StartCalibration()`.
 
 ## Getting a calibrated prediction

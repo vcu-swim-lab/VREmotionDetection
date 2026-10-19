@@ -3,9 +3,15 @@
 ## Unreleased
 
 - Describe the bundled local model as the acted-data-trained MoE–TCN model based on Rahman et al.'s architecture.
-- Add `UseLocalModel()`; retain `UseSparseVr()` as a deprecated compatibility alias. Model assets and calibration identifiers are unchanged.
+- Add `UseLocalModel()`; retain `UseSparseVr()` as a deprecated compatibility alias.
 - Shorten the README and preserve complete examples and reference material in `Documentation~/UsageGuide.md`.
 - Clarify saved-calibration reuse and timing; rename the overview to “How it works.”
+- Fixed: face sampling and the spacing of calibration samples follow real time, so pausing or slowing the game (`Time.timeScale`) no longer stops or slows face tracking or stalls a calibration.
+- Fixed: setting `UseCalibration` to `false` while a calibration is running now stops it: it returns `false`, `CalibrationError` says why, and a Jev request or retry delay of that calibration is aborted. A finished calibration and saved files are kept.
+- Fixed: `CalibrateAll` validates `secondsBetweenSamples` and `maxAttempts` before it touches anything, like `CalibrateEmotion`; a rejected call no longer discards an existing calibration, and `NaN` or infinite intervals are refused by both.
+- Fixed: `FaceAuModel` and `SoundModel` dispose the input tensors they create; `DeviceManager` releases its devices when it is disabled or destroyed, and the sound device stops the microphone (and a startup that is still waiting).
+- Changed: the bundled model file is now `sparseVR_teacher_model_acted_only_vol-aug-k1.onnx`. It keeps its GUID, so scenes and prefabs still find it, but the local model's backend id is its file name, so a calibration saved before this change is refused (“calibrate again”) and must be redone.
+- Text: the remaining user-facing “SparseVr” wording in `CITATION.cff` and `THIRD_PARTY_NOTICES.md` now says “local model”.
 
 ## 3.0.0 - 2026-10-17
 

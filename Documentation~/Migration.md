@@ -17,9 +17,13 @@ Nothing else changes: class names, serialized fields, script GUIDs and the saved
 Use `UseLocalModel()` to select the on-device model trained on acted emotional-expression data.
 `UseSparseVr()` remains a deprecated alias with identical behavior, so existing calls still compile
 with an obsolete warning. Update those calls to remove the warning. This naming change does not
-rename the internal `SparseVrBackend` type, ONNX asset, script GUIDs, or calibration identifiers.
+rename the internal `SparseVrBackend` type or the script GUIDs.
 
-Everything in 2.1 (after that `using` line): `NewFaceAuModel` with its `Predict`, `PredictDetailed`, `PredictRaw`, the calibration calls, the results calls, `FacePrediction`, `Emotion`, `DeviceManager`, the serialized fields (`faceModel`, `useCalibration`, `saveResults`) and the saved calibration and results files. Scenes and prefabs do not need changes. A calibration saved by 2.1 loads in 3.0.
+Everything in 2.1 (after that `using` line): `NewFaceAuModel` with its `Predict`, `PredictDetailed`, `PredictRaw`, the calibration calls, the results calls, `FacePrediction`, `Emotion`, `DeviceManager`, the serialized fields (`faceModel`, `useCalibration`, `saveResults`) and the saved calibration and results files. Scenes and prefabs do not need changes. A calibration saved by 2.1 loads in 3.0 as released, but not after the model file rename described below.
+
+### Bundled model file renamed (after 3.0.0)
+
+The bundled ONNX file is now `sparseVR_teacher_model_acted_only_vol-aug-k1.onnx`. Its GUID is unchanged, so scenes and prefabs that reference it need no change. The local model's backend id is the asset's file name, so a calibration saved before the rename is refused with “calibrate again”: calibrate again and save it.
 
 ## What is new
 

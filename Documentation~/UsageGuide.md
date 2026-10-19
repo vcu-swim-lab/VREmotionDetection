@@ -141,7 +141,7 @@ that uses them with `using VcuSwimLab.VREmotionDetection;`.
 
 | Field | Default | What it does |
 |---|---|---|
-| **Face Model** | filled in automatically with `sparseVR_teacher_model_acted_only_vol-aug-k1_with-EmojiHero.onnx` | the local model. If it is empty, drag that file from the package's `Runtime/Models` folder. Leave it empty only if you will use Jev alone |
+| **Face Model** | filled in automatically with `sparseVR_teacher_model_acted_only_vol-aug-k1.onnx` | the local model. If it is empty, drag that file from the package's `Runtime/Models` folder. Leave it empty only if you will use Jev alone |
 | **Use Calibration** | off | switches calibration on. You can also set `predictor.UseCalibration = true` in code |
 | **Save Results** | on | writes every prediction to a CSV file on the headset (see [Results files](#13-results-files)) |
 
@@ -688,12 +688,12 @@ results file.
 
 | Call | Await? | Returns | Notes |
 |---|---|---|---|
-| `UseCalibration` (property) | — | `bool`, settable | the **Use Calibration** checkbox. While `false`, the calls below do not calibrate (`CalibrationError` says so) |
+| `UseCalibration` (property) | — | `bool`, settable | the **Use Calibration** checkbox. While `false`, the calls below do not calibrate (`CalibrationError` says so). Setting it to `false` stops a calibration that is running; a finished calibration is kept and applies again when it is switched back on |
 | `IsCalibrated` | — | `bool` | `true` when `Predict` is using a calibration |
 | `CalibrationError` | — | `string` | why the last calibration, load or save failed; empty or `null` if nothing failed |
-| `CalibrateAll(Func<Emotion, Awaitable> prompt = null, float secondsBetweenSamples = 1, int maxAttempts = 20)` | yes | `bool` | calibrates all seven emotions then finishes. `true` = ready. Call it again to start over |
+| `CalibrateAll(Func<Emotion, Awaitable> prompt = null, float secondsBetweenSamples = 1, int maxAttempts = 20)` | yes | `bool` | calibrates all seven emotions then finishes. `true` = ready. Call it again to start over. Throws `ArgumentOutOfRangeException` (before changing anything) if `secondsBetweenSamples` is negative, `NaN` or infinite, or `maxAttempts` is below 1. `false` if it was stopped, with the reason in `CalibrationError` |
 | `StartCalibration()` | no | `void` | begins a new calibration, forgetting any earlier one (for step-by-step control) |
-| `CalibrateEmotion(Emotion emotion, float secondsBetweenSamples = 1, int maxAttempts = 20)` | yes | `bool` | collects one emotion (10 samples). `false` if tracking was lost for too long, or the backend changed meanwhile |
+| `CalibrateEmotion(Emotion emotion, float secondsBetweenSamples = 1, int maxAttempts = 20)` | yes | `bool` | collects one emotion (10 samples). `false` if tracking was lost for too long, or the backend changed or calibration was switched off meanwhile. Throws `ArgumentOutOfRangeException` for the same arguments as `CalibrateAll` |
 | `FinishCalibration()` | no | `bool` | builds it from the seven emotions. `false` if one is missing; see `CalibrationError` |
 | `ClearCalibration()` | no | `void` | stop using calibration |
 | `CalibratedEmotion(FacePrediction)` | no | `Emotion?` | the calibrated answer for a prediction, or `null` if not calibrated |
@@ -1062,9 +1062,6 @@ public issue. If an API key was ever committed, revoke it at Typesafe first.
 * Rahman, Choi, Lim, Lee, Lee, Cho, Damevski. *Toward Generalized Emotion Recognition in VR by
   Bridging Natural and Acted Facial Expressions.* Sensors 26(3):845, 2026.
   [doi:10.3390/s26030845](https://doi.org/10.3390/s26030845)
-* Ortmann, Wang, Putzar. *EmojiHeroVR: A Study on Facial Expression Recognition under Partial
-  Occlusion from Head-Mounted Displays.* ACII 2024.
-  [doi:10.1109/ACII63134.2024.00014](https://doi.org/10.1109/ACII63134.2024.00014)
 * Rahman, Kang, Jang, Lee, Cho, Damevski. *When Pair Programming Gets Emotional: A Case Study of
   What LLMs Still Miss.* IJSEKE, 2026.
   [doi:10.1142/S0218194026500294](https://doi.org/10.1142/S0218194026500294)

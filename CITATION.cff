@@ -9,7 +9,7 @@ repository-code: "https://github.com/vcu-swim-lab/VREmotionDetection"
 url: "https://github.com/vcu-swim-lab/VREmotionDetection"
 abstract: >-
   A Unity package that predicts seven emotions (anger, disgust, fear, happiness, neutral, sadness,
-  surprise) from Meta Quest Pro face tracking. It runs an on-device model (SparseVr) or Typesafe's
+  surprise) from Meta Quest Pro face tracking. It runs an on-device local model or Typesafe's
   Jev model, with optional per-player calibration.
 keywords:
   - emotion recognition

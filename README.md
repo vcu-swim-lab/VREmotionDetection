@@ -180,7 +180,8 @@ do not include keys or participant data in public issues.
 - [Software citation](./CITATION.cff), [changelog](./CHANGELOG.md), and [third-party notices](./THIRD_PARTY_NOTICES.md)
 
 The old `UseSparseVr()` method remains as a deprecated compatibility alias for `UseLocalModel()`.
-Existing model filenames, asset references, and saved-calibration identifiers are unchanged.
+The bundled model file was renamed. It keeps its GUID, so scenes and prefabs that reference it are unaffected, but a calibration saved
+before the rename is refused and must be redone (see the [changelog](./CHANGELOG.md)).
 
 ## License
 

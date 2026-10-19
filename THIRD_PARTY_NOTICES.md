@@ -8,18 +8,18 @@ Unity's Package Manager installs those packages from their publishers, under the
 
 ### Bundled model
 
-`Runtime/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_with-EmojiHero.onnx`
+`Runtime/Models/sparseVR_teacher_model_acted_only_vol-aug-k1.onnx`
 
 | | |
 |---|---|
-| Used for | the SparseVr backend (on-device emotion prediction) |
+| Used for | the local-model backend (on-device emotion prediction) |
 | Owner and licence | trained by the VCU SWIM Lab and distributed under this package's MIT licence |
-| Training data | acted facial expressions recorded with Meta Quest Pro headsets, and the EmojiHeroVR database (EmoHeVRDB), as the file name indicates. See [CITATIONS.bib](./CITATIONS.bib) |
+| Training data | acted facial expressions recorded with Meta Quest Pro headsets. See [CITATIONS.bib](./CITATIONS.bib) |
 
 No recordings, participant data or calibration profiles are included in this repository.
 
 > **TODO before release (lab to confirm):** that the lab owns the model weights and may release them
-> under the MIT licence, and that the terms under which the EmojiHeroVR database was obtained allow
+> under the MIT licence, and that the terms under which all of the training data was obtained allow
 > redistributing a model trained on it (and say whether a citation or attribution is required).
 > Delete this note once confirmed.
 
@@ -27,7 +27,7 @@ No recordings, participant data or calibration profiles are included in this rep
 
 | Component | Version | Licence | Used for |
 |---|---|---|---|
-| Unity Inference Engine (`com.unity.ai.inference`) | 2.2.1 | Unity Terms of Service, see the package's `LICENSE.md` and `Third Party Notices.md` | runs the SparseVr model |
+| Unity Inference Engine (`com.unity.ai.inference`) | 2.2.1 | Unity Terms of Service, see the package's `LICENSE.md` and `Third Party Notices.md` | runs the local model |
 | Meta XR Core SDK (`com.meta.xr.sdk.core`) | 77.0.0 | Oculus SDK License Agreement, <https://developer.oculus.com/licenses/oculussdk/> | Quest Pro face tracking (`OVRFaceExpressions`) |
 | OpenXR Plugin (`com.unity.xr.openxr`) | 1.15.0 | Unity Companion License for the source code, otherwise the Unity Package Distribution License | XR runtime on the headset |
 | Newtonsoft Json for Unity (`com.unity.nuget.newtonsoft-json`) | 3.2.1 | Unity Companion License; it contains Newtonsoft.Json, MIT licence, Copyright (c) 2007 James Newton-King | Jev request and response (JSON) |

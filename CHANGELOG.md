@@ -1,25 +1,12 @@
 # Changelog
 
-## Unreleased
-
-- Describe the bundled local model as the acted-data-trained MoE–TCN model based on Rahman et al.'s architecture.
-- Add `UseLocalModel()`; retain `UseSparseVr()` as a deprecated compatibility alias.
-- Shorten the README and preserve complete examples and reference material in `Documentation~/UsageGuide.md`.
-- Clarify saved-calibration reuse and timing; rename the overview to “How it works.”
-- Fixed: face sampling and the spacing of calibration samples follow real time, so pausing or slowing the game (`Time.timeScale`) no longer stops or slows face tracking or stalls a calibration.
-- Fixed: setting `UseCalibration` to `false` while a calibration is running now stops it: it returns `false`, `CalibrationError` says why, and a Jev request or retry delay of that calibration is aborted. A finished calibration and saved files are kept.
-- Fixed: `CalibrateAll` validates `secondsBetweenSamples` and `maxAttempts` before it touches anything, like `CalibrateEmotion`; a rejected call no longer discards an existing calibration, and `NaN` or infinite intervals are refused by both.
-- Fixed: `FaceAuModel` and `SoundModel` dispose the input tensors they create; `DeviceManager` releases its devices when it is disabled or destroyed, and the sound device stops the microphone (and a startup that is still waiting).
-- Changed: the bundled model file is now `sparseVR_teacher_model_acted_only_vol-aug-k1.onnx`. It keeps its GUID, so scenes and prefabs still find it, but the local model's backend id is its file name, so a calibration saved before this change is refused (“calibrate again”) and must be redone.
-- Text: the remaining user-facing “SparseVr” wording in `CITATION.cff` and `THIRD_PARTY_NOTICES.md` now says “local model”.
-
-## 3.0.0 - 2026-10-17
+## 3.0.0 - 2026-10-19
 
 ### Breaking
-- Every public type of the runtime and editor assemblies is now in the `VcuSwimLab.VREmotionDetection` namespace. Add `using VcuSwimLab.VREmotionDetection;` to your scripts. Class names, serialized fields, script GUIDs, the results CSV and the calibration files are unchanged, so scenes, prefabs and saved calibrations keep working. See `Documentation~/Migration.md`.
+- Every public type of the runtime and editor assemblies is now in the `VcuSwimLab.VREmotionDetection` namespace. Add `using VcuSwimLab.VREmotionDetection;` to your scripts. Class names, serialized fields, script GUIDs, the results CSV and the calibration files are unchanged, so scenes and prefabs keep working. A calibration saved by 2.1 must be redone, because the bundled model file was renamed (see Changed). See `Documentation~/Migration.md`.
 
 ### Added
-- Pluggable backends behind `IEmotionBackend`: the bundled SparseVr ONNX model and a new Jev (Typesafe) backend. `UseSparseVr`, `UseJev`, `UseBackend`, `ScoreWith`.
+- Pluggable backends behind `IEmotionBackend`: the bundled local ONNX model and a new Jev (Typesafe) backend. `UseLocalModel` (`UseSparseVr` stays as a deprecated alias), `UseJev`, `UseBackend`, `ScoreWith`.
 - `JevOptions`: the API key is a constructor parameter; `FromEnvironment()` is an explicit opt-in.
 - Typed errors: `PredictionErrorCode`, `PredictionError`, `TryPredict`, `LastError`, `PredictionFailed`.
 - Calibration follows the active backend and is tied to it when saved.
@@ -39,6 +26,9 @@
 - The headset results menu reports the files it copied and refuses to guess between several devices.
 - `package.json` completed (Unity 6 with `unityRelease` 33f1, contact email, changelog link, keywords, links, and the `jsonserialize` and `unitywebrequest` module dependencies; no Audio module dependency is declared, as in 2.1).
 - All source comments moved into the documentation.
+- The bundled model file is now `sparseVR_teacher_model_acted_only_vol-aug-k1.onnx`. It keeps its GUID, so scenes and prefabs still find it, but the local model's backend id is its file name, so a calibration saved by 2.1 is refused (“calibrate again”) and must be redone.
+- The bundled local model is described as the acted-data-trained MoE–TCN model based on Rahman et al.'s architecture; the remaining user-facing “SparseVr” wording in `CITATION.cff` and `THIRD_PARTY_NOTICES.md` now says “local model”.
+- The README is shorter, with complete examples and reference material in `Documentation~/UsageGuide.md`; saved-calibration reuse and timing are clarified, and the overview is renamed “How it works.”
 
 ### Behaviour
 - Error messages for failed Jev replies no longer copy the service's text unless `IncludeServerDetails` is on.
@@ -67,6 +57,10 @@
 - Jev error text from the service was not bounded and control characters and `Bearer` values were not removed.
 - Jev: a key could survive in an error message when the text was cut before it was scrubbed; `BaseUrl` accepted credentials and query strings; long JSON error messages were not cut to 200 characters.
 - `NotConfigured` answers are no longer written to the results file.
+- Face sampling and the spacing of calibration samples follow real time, so pausing or slowing the game (`Time.timeScale`) no longer stops or slows face tracking or stalls a calibration.
+- Setting `UseCalibration` to `false` while a calibration is running now stops it: it returns `false`, `CalibrationError` says why, and a Jev request or retry delay of that calibration is aborted. A finished calibration and saved files are kept.
+- `CalibrateAll` validates `secondsBetweenSamples` and `maxAttempts` before it touches anything, like `CalibrateEmotion`; a rejected call no longer discards an existing calibration, and `NaN` or infinite intervals are refused by both.
+- `FaceAuModel` and `SoundModel` dispose the input tensors they create; `DeviceManager` releases its devices when it is disabled or destroyed, and the sound device stops the microphone (and a startup that is still waiting).
 
 ## 2.1.0
 - Acted-data model, optional movement calibration, results saving.

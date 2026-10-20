@@ -3,7 +3,7 @@ message: "If you use this software, please cite it using the metadata from this 
 title: "VREmotionDetection"
 type: software
 version: 3.0.0
-date-released: 2026-10-17
+date-released: 2026-10-19
 license: MIT
 repository-code: "https://github.com/vcu-swim-lab/VREmotionDetection"
 url: "https://github.com/vcu-swim-lab/VREmotionDetection"

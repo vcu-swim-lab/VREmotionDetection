@@ -14,14 +14,9 @@ Unity's Package Manager installs those packages from their publishers, under the
 |---|---|
 | Used for | the local-model backend (on-device emotion prediction) |
 | Owner and licence | trained by the VCU SWIM Lab and distributed under this package's MIT licence |
-| Training data | acted facial expressions recorded with Meta Quest Pro headsets. See [CITATIONS.bib](./CITATIONS.bib) |
+| Training data | acted facial expressions recorded with Meta Quest Pro headsets, and the EmojiHeroVR database (EmoHeVRDB). See [CITATIONS.bib](./CITATIONS.bib) |
 
 No recordings, participant data or calibration profiles are included in this repository.
-
-> **TODO before release (lab to confirm):** that the lab owns the model weights and may release them
-> under the MIT licence, and that the terms under which all of the training data was obtained allow
-> redistributing a model trained on it (and say whether a citation or attribution is required).
-> Delete this note once confirmed.
 
 ## Dependencies installed by Unity's Package Manager
 

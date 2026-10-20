@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using UnityEngine;
-using VcuSwimLab.Calibration;
+using VcuSeCenter.Calibration;
 
-namespace VcuSwimLab.Backends.Jev
+namespace VcuSeCenter.Backends.Jev
 {
     public sealed class JevBackend : ICancelableBackend
     {

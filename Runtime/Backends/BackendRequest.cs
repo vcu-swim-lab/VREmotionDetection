@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using VcuSwimLab.Calibration;
+using VcuSeCenter.Calibration;
 
-namespace VcuSwimLab.Backends
+namespace VcuSeCenter.Backends
 {
     public readonly struct BackendRequest
     {

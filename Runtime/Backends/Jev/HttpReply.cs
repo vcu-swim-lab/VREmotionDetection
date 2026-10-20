@@ -1,4 +1,4 @@
-namespace VcuSwimLab.Backends.Jev
+namespace VcuSeCenter.Backends.Jev
 {
     public readonly struct HttpReply
     {

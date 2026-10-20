@@ -50,8 +50,8 @@ public interface IEmotionBackend : IDisposable
 
 ```csharp
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.VREmotionDetection;
 
 public sealed class ConstantBackend : IEmotionBackend
 {
@@ -75,9 +75,9 @@ public sealed class ConstantBackend : IEmotionBackend
 }
 ```
 
-For this example, reference both `VcuSwimLab.Backends` and `VREmotionDetection` in your custom assembly definition: `Emotion.Neutral` is defined in the runtime assembly. Unity engine references must also be enabled for `Awaitable`.
+For this example, reference both `VcuSeCenter.Backends` and `VREmotionDetection` in your custom assembly definition: `Emotion.Neutral` is defined in the runtime assembly. Unity engine references must also be enabled for `Awaitable`.
 
-A backend that must remain independent of the runtime assembly should use the supplied `request.ClassNames` to identify output indices instead of the runtime's `Emotion` enum. Such a backend can reference only the contracts assembly (`VcuSwimLab.Backends`), plus `VcuSwimLab.Calibration` if it uses profile types, without referencing either concrete backend. Put the example above in a separate application assembly, not in the package's backend-contract assembly.
+A backend that must remain independent of the runtime assembly should use the supplied `request.ClassNames` to identify output indices instead of the runtime's `Emotion` enum. Such a backend can reference only the contracts assembly (`VcuSeCenter.Backends`), plus `VcuSeCenter.Calibration` if it uses profile types, without referencing either concrete backend. Put the example above in a separate application assembly, not in the package's backend-contract assembly.
 
 ## Score conventions
 

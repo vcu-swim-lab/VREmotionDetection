@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     internal static class AdbRunner
     {

@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine.Networking;
-using VcuSwimLab.Backends.Jev;
+using VcuSeCenter.Backends.Jev;
 
 public class TransportTests
 {

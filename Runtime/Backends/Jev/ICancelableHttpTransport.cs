@@ -1,7 +1,7 @@
 using System.Threading;
 using UnityEngine;
 
-namespace VcuSwimLab.Backends.Jev
+namespace VcuSeCenter.Backends.Jev
 {
     public interface ICancelableHttpTransport : IHttpTransport
     {

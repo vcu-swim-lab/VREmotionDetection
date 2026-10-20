@@ -1,4 +1,4 @@
-namespace VcuSwimLab.Backends
+namespace VcuSeCenter.Backends
 {
     public readonly struct PredictionError
     {

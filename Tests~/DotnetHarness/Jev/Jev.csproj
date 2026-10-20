@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>VcuSwimLab.Backends.Jev</AssemblyName>
+    <AssemblyName>VcuSeCenter.Backends.Jev</AssemblyName>
     <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
   </PropertyGroup>
   <ItemGroup>

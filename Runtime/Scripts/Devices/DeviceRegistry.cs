@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     internal static class DeviceRegistry
     {

@@ -8,9 +8,9 @@ using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.VREmotionDetection;
 
 public class ReadmeRecipeTests
 {

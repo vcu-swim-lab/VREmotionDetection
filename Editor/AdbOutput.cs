@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     internal static class AdbOutput
     {

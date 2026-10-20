@@ -6,11 +6,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEngine;
-using VcuSwimLab.Backends;
+using VcuSeCenter.Backends;
 
 using Debug = UnityEngine.Debug;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     internal sealed class ResultsRecorder : IDisposable
     {

@@ -2,7 +2,8 @@
   <!-- Only the golden end-to-end scenario, so it builds against OLDER package source too (run-tests.sh, option compare):
        the full Tests project uses APIs that older versions do not have.
        -p:PackageRoot=<folder with Runtime/> picks the package to run; -p:LegacyGlobalNamespace=true is for versions
-       from before the types moved into VcuSwimLab.VREmotionDetection. -->
+       from before the types moved into a namespace (run-tests.sh renames an older namespace prefix to VcuSeCenter in its
+       copy of an older version). -->
   <PropertyGroup>
     <AssemblyName>VREmotionDetection.Editor.Tests</AssemblyName>
     <IsPackable>false</IsPackable>

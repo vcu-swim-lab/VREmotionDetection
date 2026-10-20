@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
 using NUnit.Framework;
-using VcuSwimLab.Backends;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.VREmotionDetection;
 
 public class BackendContractTests
 {

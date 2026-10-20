@@ -1,7 +1,7 @@
 using System;
 using NUnit.Framework;
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 public class DeviceManagerTests
 {

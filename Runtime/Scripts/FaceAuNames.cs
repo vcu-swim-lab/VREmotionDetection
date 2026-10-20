@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
-using VcuSwimLab.Calibration;
+using VcuSeCenter.Calibration;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     internal static class FaceAuNames
     {

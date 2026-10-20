@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace VcuSwimLab.Calibration
+namespace VcuSeCenter.Calibration
 {
     public sealed class PersonalCentroidBuilder
     {

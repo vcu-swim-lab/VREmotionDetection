@@ -5,9 +5,9 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.SparseVr;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.SparseVr;
+using VcuSeCenter.VREmotionDetection;
 
 public class BackendAssembliesTests
 {

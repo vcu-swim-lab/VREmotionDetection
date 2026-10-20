@@ -7,7 +7,7 @@ using UnityEngine;
 
 using Debug = UnityEngine.Debug;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     public static class HeadsetResultsMenu
     {

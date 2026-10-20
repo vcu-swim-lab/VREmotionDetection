@@ -52,7 +52,7 @@ The tests were removed from the package in `214fe73` and the library moved on. R
 
 | Change in the library | What changed in the tests |
 |---|---|
-| Types moved into `VcuSwimLab.VREmotionDetection` (`6416b0c`) | `using VcuSwimLab.VREmotionDetection;` in most files |
+| Types moved into the package namespace (`6416b0c`), now `VcuSeCenter.VREmotionDetection` | `using VcuSeCenter.VREmotionDetection;` in most files |
 | `InternalsVisibleTo` for the test assembly removed | the harness grants it itself (`DotnetHarness/Harness/InternalsVisibleTo.cs`) |
 | `DeviceRegistry.Replace`, `DeviceManager.Disable` removed | `EditMode/DeviceRegistryHook.cs` reaches the registry's private dictionary; `devices.Remove` replaces `Disable` |
 | `ResultsRecorder(folder)` removed; folder comes from `Application.persistentDataPath` | `ResultsRecorderTests` moved to `DotnetHarness/Tests` and sets the (stubbed) path |

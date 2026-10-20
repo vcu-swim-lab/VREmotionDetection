@@ -64,7 +64,7 @@ Attach this script to the same GameObject as the predictor:
 
 ```csharp
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class FirstPrediction : MonoBehaviour
@@ -82,6 +82,10 @@ public class FirstPrediction : MonoBehaviour
     }
 }
 ```
+
+All of the package's runtime types are in the `VcuSeCenter.VREmotionDetection` namespace; the backends are in
+`VcuSeCenter.Backends` (with `VcuSeCenter.Backends.Jev` and `VcuSeCenter.Backends.SparseVr`) and the calibration
+types in `VcuSeCenter.Calibration`.
 
 `TryPredict()` distinguishes a successful prediction from errors such as unavailable tracking.
 It returns the original model prediction, even when calibration is enabled. `Predict()` applies
@@ -118,7 +122,7 @@ processing time; tracking loss and retries can increase the wait.
 Select Jev instead of the local model:
 
 ```csharp
-using VcuSwimLab.Backends.Jev;
+using VcuSeCenter.Backends.Jev;
 
 // Editor/desktop: explicitly read TYPESAFE_API_KEY from the environment.
 predictor.UseJev(JevOptions.FromEnvironment());
@@ -180,9 +184,10 @@ do not include keys or participant data in public issues.
 - [Software citation](./CITATION.cff), [changelog](./CHANGELOG.md), and [third-party notices](./THIRD_PARTY_NOTICES.md)
 
 The old `UseSparseVr()` method remains as a deprecated compatibility alias for `UseLocalModel()`.
-The bundled model file was renamed. It keeps its GUID, so scenes and prefabs that reference it are unaffected, but a calibration saved
-before the rename is refused and must be redone (see the [changelog](./CHANGELOG.md)).
+The bundled model was replaced by one trained only on the lab's own acted-expression recordings. It keeps the old model's
+GUID, so scenes and prefabs that reference it are unaffected, but a calibration saved with 2.1 is refused and must be
+redone (see the [changelog](./CHANGELOG.md)).
 
 ## License
 
-[MIT](./LICENSE). © 2026 Virginia Commonwealth University.
+[MIT](./LICENSE). © 2026 Virginia Commonwealth University (VCU SE Center).

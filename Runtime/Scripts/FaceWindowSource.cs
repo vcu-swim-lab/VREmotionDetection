@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     internal sealed class FaceWindowSource : IDisposable
     {

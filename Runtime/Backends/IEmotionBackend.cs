@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace VcuSwimLab.Backends
+namespace VcuSeCenter.Backends
 {
     public interface IEmotionBackend : IDisposable
     {

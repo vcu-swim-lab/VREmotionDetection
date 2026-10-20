@@ -5,8 +5,8 @@ using System.Linq;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEngine;
-using VcuSwimLab.Calibration;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Calibration;
+using VcuSeCenter.VREmotionDetection;
 
 public class PublicApiContract
 {
@@ -163,11 +163,12 @@ public class PublicApiContract
         Assert.AreEqual(5, NewFaceAuModel.WindowFrames);
         Assert.AreEqual(70, NewFaceAuModel.FeaturesPerFrame);
         Assert.AreEqual(3f, NewFaceAuModel.DefaultTimeoutSeconds);
-        // The bundled model file was renamed on purpose (its GUID did not change; a saved calibration records the file name as
-        // the backend id, so calibrations saved before the rename are refused). PackageContractTests checks the file is there.
+        // The bundled model was replaced on purpose under a new file name (it keeps the old model's GUID; a saved calibration
+        // records the file name as the backend id, so calibrations made with the old model are refused). PackageContractTests
+        // checks the file is there.
         Assert.AreEqual(
             "Packages/com.vcu-swim-lab.vr-emotion-detection/Runtime/Models/"
-            + "sparseVR_teacher_model_acted_only_vol-aug-k1.onnx",
+            + "sparseVR_teacher_model_acted_only_vol-aug-k1_v2_seed42.onnx",
             NewFaceAuModel.DefaultModelPath);
 
         CollectionAssert.AreEqual(
@@ -187,7 +188,7 @@ public class PublicApiContract
         recorder.Record(Emotion.Happiness, 0.81234f, true, Emotion.Surprise);
         recorder.Record(Emotion.Neutral, 0.5f, false, Emotion.Neutral);
 #if NEW_API
-        recorder.RecordFailure(VcuSwimLab.Backends.PredictionErrorCode.NoTracking);
+        recorder.RecordFailure(VcuSeCenter.Backends.PredictionErrorCode.NoTracking);
 #else
         recorder.RecordNoTracking();
 #endif

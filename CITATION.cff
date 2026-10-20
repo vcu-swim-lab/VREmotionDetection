@@ -3,7 +3,7 @@ message: "If you use this software, please cite it using the metadata from this 
 title: "VREmotionDetection"
 type: software
 version: 3.0.0
-date-released: 2026-10-19
+date-released: 2026-10-20
 license: MIT
 repository-code: "https://github.com/vcu-swim-lab/VREmotionDetection"
 url: "https://github.com/vcu-swim-lab/VREmotionDetection"
@@ -23,12 +23,6 @@ authors:
     given-names: Kostadin
     email: kdamevski@vcu.edu
     affiliation: Virginia Commonwealth University
-  # Add further authors here, one block per person (family-names and given-names are required):
-  # - family-names: Family
-  #   given-names: Given
-  #   email: name@example.edu
-  #   affiliation: Institution
-  #   orcid: "https://orcid.org/0000-0000-0000-0000"
 contact:
   - family-names: Damevski
     given-names: Kostadin

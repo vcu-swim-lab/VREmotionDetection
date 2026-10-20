@@ -1,7 +1,7 @@
 using System;
 using Unity.InferenceEngine;
 
-namespace VcuSwimLab.Backends.SparseVr
+namespace VcuSeCenter.Backends.SparseVr
 {
     public static class OnnxModelLoader
     {

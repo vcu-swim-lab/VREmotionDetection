@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace VcuSwimLab.Backends
+namespace VcuSeCenter.Backends
 {
     public static class ScoreValidation
     {

@@ -1,5 +1,5 @@
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     public readonly struct FacePrediction
     {

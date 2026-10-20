@@ -2,9 +2,9 @@ using System;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using VcuSwimLab.Calibration;
+using VcuSeCenter.Calibration;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     public sealed class CalibrationStore
     {

@@ -1,6 +1,6 @@
 using System;
 using NUnit.Framework;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 public class RingBufferTests
 {

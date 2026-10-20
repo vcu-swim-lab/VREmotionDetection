@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using VcuSwimLab.Backends;
+using VcuSeCenter.Backends;
 
-namespace VcuSwimLab.Backends.Jev
+namespace VcuSeCenter.Backends.Jev
 {
     internal static class JevResponseParser
     {

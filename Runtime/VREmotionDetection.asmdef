@@ -1,13 +1,13 @@
 {
     "name": "VREmotionDetection",
-    "rootNamespace": "VcuSwimLab.VREmotionDetection",
+    "rootNamespace": "VcuSeCenter.VREmotionDetection",
     "references": [
         "GUID:63a57c8b658089e49a173b0f0c4870a7",
         "GUID:f64c9ebcd7899c3448a08dc9f9ddbe30",
         "GUID:7512557db6354b84e8a34ed70c18a6e7",
-        "VcuSwimLab.Backends",
-        "VcuSwimLab.Backends.SparseVr",
-        "VcuSwimLab.Backends.Jev"
+        "VcuSeCenter.Backends",
+        "VcuSeCenter.Backends.SparseVr",
+        "VcuSeCenter.Backends.Jev"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

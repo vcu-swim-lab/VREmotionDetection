@@ -1,10 +1,8 @@
 {
-    "name": "VcuSwimLab.Backends.Jev",
-    "rootNamespace": "VcuSwimLab.Backends.Jev",
+    "name": "VcuSeCenter.Backends",
+    "rootNamespace": "VcuSeCenter.Backends",
     "references": [
-        "VcuSwimLab.Backends",
-        "VcuSwimLab.Calibration",
-        "Unity.Nuget.Newtonsoft-Json"
+        "VcuSeCenter.Calibration"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

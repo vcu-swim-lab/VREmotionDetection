@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>VcuSwimLab.Backends.SparseVr</AssemblyName>
+    <AssemblyName>VcuSeCenter.Backends.SparseVr</AssemblyName>
     <DisableTransitiveProjectReferences>true</DisableTransitiveProjectReferences>
   </PropertyGroup>
   <ItemGroup>

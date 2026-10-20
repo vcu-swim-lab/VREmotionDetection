@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace VcuSwimLab.Backends.Jev
+namespace VcuSeCenter.Backends.Jev
 {
     internal static class JevText
     {

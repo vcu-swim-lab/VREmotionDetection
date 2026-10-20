@@ -1,7 +1,7 @@
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class CompareBackendsExample : MonoBehaviour

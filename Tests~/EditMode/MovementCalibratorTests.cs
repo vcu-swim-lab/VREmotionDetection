@@ -1,7 +1,7 @@
 using System;
 
 using NUnit.Framework;
-using VcuSwimLab.Calibration;
+using VcuSeCenter.Calibration;
 
 public class MovementCalibratorTests
 {

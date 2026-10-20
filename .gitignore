@@ -115,3 +115,7 @@ InitTestScene*.unity*
 /Tests~/DotnetHarness/artifacts/
 /Tests~/DotnetHarness/**/bin/
 /Tests~/DotnetHarness/**/obj/
+
+# Local Unity host project, created when the package folder is opened in the editor
+/Packages/
+/ProjectSettings/

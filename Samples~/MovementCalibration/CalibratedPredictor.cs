@@ -1,5 +1,5 @@
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class CalibratedPredictor : MonoBehaviour

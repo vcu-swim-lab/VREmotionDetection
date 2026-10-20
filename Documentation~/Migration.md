@@ -2,13 +2,17 @@
 
 ## The one breaking change
 
-Every public type of the package is now in the namespace `VcuSwimLab.VREmotionDetection`. Add this line to each script that uses `NewFaceAuModel`, `Emotion`, `FacePrediction`, `PredictionOutcome`, `DeviceManager` or the other runtime types:
+Every public type of the package is now in the namespace `VcuSeCenter.VREmotionDetection`. Add this line to each script that uses `NewFaceAuModel`, `Emotion`, `FacePrediction`, `PredictionOutcome`, `DeviceManager` or the other runtime types:
 
 ```csharp
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 ```
 
-Nothing else changes: class names, serialized fields, script GUIDs and the saved files stay the same, so scenes and prefabs keep working (Unity finds scripts by GUID). The backend, Jev and calibration types were already in their own `VcuSwimLab.*` namespaces. Only code that looks a type up by its bare name as a string, such as `Type.GetType("NewFaceAuModel")`, needs the full name `VcuSwimLab.VREmotionDetection.NewFaceAuModel`.
+Nothing else changes: class names, serialized fields, script GUIDs and the saved files stay the same, so scenes and prefabs keep working (Unity finds scripts by GUID). The backend and Jev types have their own `VcuSeCenter.*` namespaces. Only code that looks a type up by its bare name as a string, such as `Type.GetType("NewFaceAuModel")`, needs the full name `VcuSeCenter.VREmotionDetection.NewFaceAuModel`.
+
+### Calibration types
+
+The calibration types (`CalibrationProfile`, `MovementCalibrator` and the others) and their assembly are now `VcuSeCenter.Calibration`. If a script or one of your assembly definitions uses them, change its `using` line to `using VcuSeCenter.Calibration;` and its assembly reference to `VcuSeCenter.Calibration`.
 
 ## What keeps working
 
@@ -19,11 +23,11 @@ Use `UseLocalModel()` to select the on-device model trained on acted emotional-e
 with an obsolete warning. Update those calls to remove the warning. This naming change does not
 rename the internal `SparseVrBackend` type or the script GUIDs.
 
-Everything in 2.1 (after that `using` line): `NewFaceAuModel` with its `Predict`, `PredictDetailed`, `PredictRaw`, the calibration calls, the results calls, `FacePrediction`, `Emotion`, `DeviceManager`, the serialized fields (`faceModel`, `useCalibration`, `saveResults`) and the saved calibration and results files. Scenes and prefabs do not need changes. A calibration saved by 2.1 is refused by 3.0 because the bundled model file was renamed, as described below.
+Everything in 2.1 (after that `using` line): `NewFaceAuModel` with its `Predict`, `PredictDetailed`, `PredictRaw`, the calibration calls, the results calls, `FacePrediction`, `Emotion`, `DeviceManager`, the serialized fields (`faceModel`, `useCalibration`, `saveResults`) and the saved calibration and results files. Scenes and prefabs do not need changes. A calibration saved by 2.1 is refused by 3.0 because the bundled model was replaced, as described below.
 
-### Bundled model file renamed
+### Bundled model replaced
 
-The bundled ONNX file is now `sparseVR_teacher_model_acted_only_vol-aug-k1.onnx`. Its GUID is unchanged, so scenes and prefabs that reference it need no change. The local model's backend id is the asset's file name, so a calibration saved by 2.1 is refused with “calibrate again”: calibrate again and save it.
+The bundled ONNX file is now `sparseVR_teacher_model_acted_only_vol-aug-k1_v2_seed42.onnx`, a model trained only on the lab's own acted-expression recordings. Its input and output are the same as before, and it keeps the GUID of 2.1's model, so scenes and prefabs that reference it need no change. Its predictions can differ from 2.1's. The local model's backend id is the asset's file name, so a calibration saved by 2.1 is refused with “calibrate again”: calibrate again and save it.
 
 ## What is new
 

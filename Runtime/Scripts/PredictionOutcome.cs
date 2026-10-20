@@ -1,6 +1,6 @@
-using VcuSwimLab.Backends;
+using VcuSeCenter.Backends;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     public readonly struct PredictionOutcome
     {

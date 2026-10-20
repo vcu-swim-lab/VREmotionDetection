@@ -5,13 +5,13 @@ using System.Reflection;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.Backends.SparseVr;
-using VcuSwimLab.Calibration;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.Backends.SparseVr;
+using VcuSeCenter.Calibration;
+using VcuSeCenter.VREmotionDetection;
 
-// 3.0.0 moved every public type of the runtime and editor assemblies into VcuSwimLab.VREmotionDetection
+// 3.0.0 moved every public type of the runtime and editor assemblies into VcuSeCenter.VREmotionDetection
 // (see Documentation~/Migration.md) and renamed UseSparseVr to UseLocalModel (UseSparseVr stays as an alias).
 public class PackageContractTests
 {
@@ -20,7 +20,7 @@ public class PackageContractTests
     {
         foreach (var assembly in new[] { typeof(NewFaceAuModel).Assembly, typeof(AdbOutput).Assembly })
         {
-            var outside = assembly.GetExportedTypes().Where(t => t.Namespace != "VcuSwimLab.VREmotionDetection").ToList();
+            var outside = assembly.GetExportedTypes().Where(t => t.Namespace != "VcuSeCenter.VREmotionDetection").ToList();
 
             CollectionAssert.IsEmpty(outside.Select(t => t.FullName), assembly.GetName().Name);
         }
@@ -31,10 +31,10 @@ public class PackageContractTests
     {
         var expected = new (Assembly assembly, string prefix)[]
         {
-            (typeof(IEmotionBackend).Assembly, "VcuSwimLab.Backends"),
-            (typeof(JevBackend).Assembly, "VcuSwimLab.Backends.Jev"),
-            (typeof(SparseVrBackend).Assembly, "VcuSwimLab.Backends.SparseVr"),
-            (typeof(MovementCalibrator).Assembly, "VcuSwimLab.Calibration"),
+            (typeof(IEmotionBackend).Assembly, "VcuSeCenter.Backends"),
+            (typeof(JevBackend).Assembly, "VcuSeCenter.Backends.Jev"),
+            (typeof(SparseVrBackend).Assembly, "VcuSeCenter.Backends.SparseVr"),
+            (typeof(MovementCalibrator).Assembly, "VcuSeCenter.Calibration"),
         };
 
         foreach (var (assembly, prefix) in expected)

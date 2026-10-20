@@ -1,9 +1,10 @@
 # Changelog
 
-## 3.0.0 - 2026-10-19
+## 3.0.0 - 2026-10-20
 
 ### Breaking
-- Every public type of the runtime and editor assemblies is now in the `VcuSwimLab.VREmotionDetection` namespace. Add `using VcuSwimLab.VREmotionDetection;` to your scripts. Class names, serialized fields, script GUIDs, the results CSV and the calibration files are unchanged, so scenes and prefabs keep working. A calibration saved by 2.1 must be redone, because the bundled model file was renamed (see Changed). See `Documentation~/Migration.md`.
+- Every public type of the runtime and editor assemblies is now in the `VcuSeCenter.VREmotionDetection` namespace. Add `using VcuSeCenter.VREmotionDetection;` to your scripts. Class names, serialized fields, script GUIDs, the results CSV and the calibration files are unchanged, so scenes and prefabs keep working. A calibration saved by 2.1 must be redone, because the bundled model was replaced (see Changed). See `Documentation~/Migration.md`.
+- The calibration types and their assembly are now `VcuSeCenter.Calibration`. Scripts and assembly definitions that used 2.1's calibration types must use this namespace and assembly name. The new backend assemblies are `VcuSeCenter.Backends`, `VcuSeCenter.Backends.SparseVr` and `VcuSeCenter.Backends.Jev`.
 
 ### Added
 - Pluggable backends behind `IEmotionBackend`: the bundled local ONNX model and a new Jev (Typesafe) backend. `UseLocalModel` (`UseSparseVr` stays as a deprecated alias), `UseJev`, `UseBackend`, `ScoreWith`.
@@ -26,7 +27,8 @@
 - The headset results menu reports the files it copied and refuses to guess between several devices.
 - `package.json` completed (Unity 6 with `unityRelease` 33f1, contact email, changelog link, keywords, links, and the `jsonserialize` and `unitywebrequest` module dependencies; no Audio module dependency is declared, as in 2.1).
 - All source comments moved into the documentation.
-- The bundled model file is now `sparseVR_teacher_model_acted_only_vol-aug-k1.onnx`. It keeps its GUID, so scenes and prefabs still find it, but the local model's backend id is its file name, so a calibration saved by 2.1 is refused (“calibrate again”) and must be redone.
+- The bundled model is replaced by `sparseVR_teacher_model_acted_only_vol-aug-k1_v2_seed42.onnx`, the same MoE–TCN recipe (volume augmentation k1, seed 42) trained only on the lab's own acted-expression recordings. Its input and output are unchanged. It keeps the GUID of 2.1's model, so scenes and prefabs still find it, but the local model's backend id is its file name, so a calibration saved by 2.1 is refused (“calibrate again”) and must be redone. Its predictions can differ from 2.1's.
+- The package author is now the VCU SE Center; `CITATIONS.bib` lists the lab's own papers and the Typesafe sources Jev is built on.
 - The bundled local model is described as the acted-data-trained MoE–TCN model based on Rahman et al.'s architecture; the remaining user-facing “SparseVr” wording in `CITATION.cff` and `THIRD_PARTY_NOTICES.md` now says “local model”.
 - The README is shorter, with complete examples and reference material in `Documentation~/UsageGuide.md`; saved-calibration reuse and timing are clarified, and the overview is renamed “How it works.”
 

@@ -247,9 +247,15 @@ stage_golden() {
     return 3
   fi
 
-  local extra=()
-  if ! grep -q 'namespace VcuSwimLab.VREmotionDetection' "$dir/Runtime/Scripts/Emotion.cs" 2>/dev/null; then
-    extra+=(-p:LegacyGlobalNamespace=true)   # a version from before the types moved into VcuSwimLab.VREmotionDetection
+  local extra=() prefix file
+  prefix="$(sed -nE 's/^namespace ([A-Za-z0-9_]+)\.VREmotionDetection.*/\1/p' "$dir/Runtime/Scripts/Emotion.cs" 2>/dev/null | head -1)"
+  if [[ -z "$prefix" ]]; then
+    extra+=(-p:LegacyGlobalNamespace=true)   # a version from before the types moved into a namespace
+  elif [[ "$prefix" != VcuSeCenter ]]; then
+    # a version with an older namespace prefix: rename it in the extracted copy so the scenario compiles against it
+    while IFS= read -r file; do
+      sed -E "s/(^|[^A-Za-z0-9_])$prefix\./\1VcuSeCenter./g" "$file" >"$file.tmp" && mv "$file.tmp" "$file"
+    done < <(grep -rl --include='*.cs' "$prefix\." "$dir")
   fi
 
   if ! run_golden "$before" ref -p:PackageRoot="$dir" -p:ArtifactsPath="$RUN_TMP/artifacts-ref" "${extra[@]}"; then

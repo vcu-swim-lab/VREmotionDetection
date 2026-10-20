@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 // The headset delivers face data in real time, so pausing or slowing the game (Time.timeScale) must not change how
 // often the face is sampled, whether a prediction finds tracking, or how long a calibration takes.

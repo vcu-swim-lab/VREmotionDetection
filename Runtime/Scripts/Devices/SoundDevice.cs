@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.Android;
 #endif
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     public class SoundDevice : Device
     {

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     public class AUDevice : Device
     {

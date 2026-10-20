@@ -1,4 +1,4 @@
-namespace VcuSwimLab.Calibration
+namespace VcuSeCenter.Calibration
 {
     public sealed class CalibrationProfile
     {

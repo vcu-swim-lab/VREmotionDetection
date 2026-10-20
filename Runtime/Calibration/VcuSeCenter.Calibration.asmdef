@@ -1,6 +1,6 @@
 {
-    "name": "VcuSwimLab.Calibration",
-    "rootNamespace": "VcuSwimLab.Calibration",
+    "name": "VcuSeCenter.Calibration",
+    "rootNamespace": "VcuSeCenter.Calibration",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

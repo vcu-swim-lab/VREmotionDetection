@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 // The obsolete FaceAuModel and the audio SoundModel create input tensors themselves, so they must dispose them once the
 // inference is done - and must leave tensors that belong to the caller alone. Tensor.Live counts tensors that were

@@ -11,7 +11,7 @@ using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEngine;
 #if !LEGACY_GLOBAL_NAMESPACE
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 #endif
 
 public class GoldenScenario
@@ -34,6 +34,22 @@ public class GoldenScenario
         var scores = Enumerable.Repeat(0.04f, 7).ToArray();
         scores[peak] = 0.76f;
         return scores;
+    }
+
+    // A copy of TestHelpers.ReadAllLinesShared: Golden.csproj compiles only this file and HarnessRig.cs, so that it also builds
+    // against older versions. The results recorder keeps its file open for writing, and Windows refuses a reader that does not
+    // share write access with it.
+    private static string[] ReadAllLinesShared(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        var lines = new List<string>();
+        for (string line; (line = reader.ReadLine()) != null;)
+        {
+            lines.Add(line);
+        }
+
+        return lines.ToArray();
     }
 
     private static void Field(object target, string name, object value) =>
@@ -182,7 +198,7 @@ public class GoldenScenario
         stop.Cancel();
         await feeder;
 
-        string[] rows = TestHelpers.ReadAllLinesShared(model.ResultsFilePath);
+        string[] rows = ReadAllLinesShared(model.ResultsFilePath);
         Add("csv", rows.Select(r => string.Join(",", r.Split(',').Skip(2))).ToArray());
         Add("summary", Regex.Replace(model.GetResultsSummary(), @"over \d+\.\d min", "over X min"));
 

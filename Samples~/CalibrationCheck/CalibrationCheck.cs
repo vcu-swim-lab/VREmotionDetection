@@ -3,9 +3,9 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Events;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class CalibrationCheck : MonoBehaviour

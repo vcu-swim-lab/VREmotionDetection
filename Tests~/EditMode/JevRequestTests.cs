@@ -2,8 +2,8 @@ using System;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.Calibration;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.Calibration;
 
 public class JevRequestTests
 {
@@ -169,7 +169,7 @@ public class JevRequestTests
         var scores = JevScores.ForCalibration(new[] { 0f, 0f, 0f, 1f, 0f, 0f, 0f });
 
         Assert.AreEqual(1f, scores.Sum(), 1e-5f);
-        Assert.AreEqual(3, VcuSwimLab.Backends.ScoreValidation.Argmax(scores));
+        Assert.AreEqual(3, VcuSeCenter.Backends.ScoreValidation.Argmax(scores));
         Assert.IsTrue(scores.All(s => s > 0.009f));
         Assert.IsNull(JevScores.ForCalibration(null));
     }

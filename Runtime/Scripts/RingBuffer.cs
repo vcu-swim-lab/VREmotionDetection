@@ -1,6 +1,6 @@
 using System;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     public class RingBuffer<T>
     {

@@ -8,13 +8,13 @@ Unity's Package Manager installs those packages from their publishers, under the
 
 ### Bundled model
 
-`Runtime/Models/sparseVR_teacher_model_acted_only_vol-aug-k1.onnx`
+`Runtime/Models/sparseVR_teacher_model_acted_only_vol-aug-k1_v2_seed42.onnx`
 
 | | |
 |---|---|
 | Used for | the local-model backend (on-device emotion prediction) |
-| Owner and licence | trained by the VCU SWIM Lab and distributed under this package's MIT licence |
-| Training data | acted facial expressions recorded with Meta Quest Pro headsets, and the EmojiHeroVR database (EmoHeVRDB). See [CITATIONS.bib](./CITATIONS.bib) |
+| Owner and licence | trained by the VCU SE Center and distributed under this package's MIT licence |
+| Training data | the lab's own recordings of acted facial expressions, made with Meta Quest Pro headsets. See [CITATIONS.bib](./CITATIONS.bib) |
 
 No recordings, participant data or calibration profiles are included in this repository.
 

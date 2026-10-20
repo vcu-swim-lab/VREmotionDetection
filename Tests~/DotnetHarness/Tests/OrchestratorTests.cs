@@ -9,9 +9,9 @@ using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.VREmotionDetection;
 
 public class OrchestratorTests
 {
@@ -480,9 +480,9 @@ public class OrchestratorTests
 
     private readonly struct CalibrationProfileSeen
     {
-        public CalibrationProfileSeen(VcuSwimLab.Calibration.CalibrationProfile profile) { Profile = profile; }
+        public CalibrationProfileSeen(VcuSeCenter.Calibration.CalibrationProfile profile) { Profile = profile; }
 
-        public VcuSwimLab.Calibration.CalibrationProfile Profile { get; }
+        public VcuSeCenter.Calibration.CalibrationProfile Profile { get; }
     }
 
     [Test]

@@ -1,8 +1,8 @@
 using System.Threading.Tasks;
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.VREmotionDetection;
 
 // Snippets from README.md and Documentation~/UsageGuide.md that are not whole classes. Compile check only.
 public class ReadmeFragments : MonoBehaviour

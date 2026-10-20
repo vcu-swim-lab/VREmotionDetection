@@ -2,9 +2,9 @@ using System;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.Calibration;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.Calibration;
+using VcuSeCenter.VREmotionDetection;
 
 internal static class JevTestData
 {

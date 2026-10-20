@@ -3,12 +3,12 @@
     "rootNamespace": "",
     "references": [
         "VREmotionDetection",
-        "VcuSwimLab.Calibration",
+        "VcuSeCenter.Calibration",
         "GUID:63a57c8b658089e49a173b0f0c4870a7",
         "Unity.Nuget.Newtonsoft-Json",
-        "VcuSwimLab.Backends",
-        "VcuSwimLab.Backends.SparseVr",
-        "VcuSwimLab.Backends.Jev",
+        "VcuSeCenter.Backends",
+        "VcuSeCenter.Backends.SparseVr",
+        "VcuSeCenter.Backends.Jev",
         "VREmotionDetection.Editor"
     ],
     "includePlatforms": [

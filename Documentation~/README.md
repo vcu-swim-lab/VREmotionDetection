@@ -12,4 +12,4 @@
 | [Design notes](DesignNotes.md) | learn why things are the way they are |
 | [Migration](Migration.md) | move from 2.1 to 3.0 |
 
-The package README has the quick start. All types are in the namespace `VcuSwimLab.VREmotionDetection`: add `using VcuSwimLab.VREmotionDetection;` to your scripts.
+The package README has the quick start. All runtime types are in the namespace `VcuSeCenter.VREmotionDetection`: add `using VcuSeCenter.VREmotionDetection;` to your scripts. Backend types are in `VcuSeCenter.Backends` (and `VcuSeCenter.Backends.Jev`, `VcuSeCenter.Backends.SparseVr`), calibration types in `VcuSeCenter.Calibration`.

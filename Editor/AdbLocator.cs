@@ -1,7 +1,7 @@
 using System.IO;
 using System.Linq;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     internal static class AdbLocator
     {

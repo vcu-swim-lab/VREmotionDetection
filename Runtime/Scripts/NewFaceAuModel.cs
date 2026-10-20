@@ -1,12 +1,12 @@
 using System;
 using Unity.InferenceEngine;
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.Backends.SparseVr;
-using VcuSwimLab.Calibration;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.Backends.SparseVr;
+using VcuSeCenter.Calibration;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     [RequireComponent(typeof(OVRFaceExpressions))]
     [RequireComponent(typeof(DeviceManager))]
@@ -18,7 +18,7 @@ namespace VcuSwimLab.VREmotionDetection
 
         public const string DefaultModelPath =
             "Packages/com.vcu-swim-lab.vr-emotion-detection/Runtime/Models/" +
-            "sparseVR_teacher_model_acted_only_vol-aug-k1.onnx";
+            "sparseVR_teacher_model_acted_only_vol-aug-k1_v2_seed42.onnx";
 
         private const string CalibrationOffMessage =
             "calibration is off: tick \"Use Calibration\" on the predictor, or set UseCalibration = true";

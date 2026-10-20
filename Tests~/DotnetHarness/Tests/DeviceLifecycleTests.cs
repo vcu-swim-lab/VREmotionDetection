@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 // Devices that hold hardware (the microphone) are stopped when their DeviceManager is disabled or destroyed, and a
 // startup that is still waiting (for samples, or for the permission dialog on Android) does not carry on afterwards.

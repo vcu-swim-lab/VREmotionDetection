@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using VcuSwimLab.Backends.Jev;
+using VcuSeCenter.Backends.Jev;
 
 // JevText.Sanitize cleans every piece of the service's text before it reaches an error message or a log line
 // (added after the baseline; see the 3.0.0 "Fixed" entries about key leaks and unbounded server text).

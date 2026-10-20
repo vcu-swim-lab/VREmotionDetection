@@ -29,8 +29,9 @@ ReadmeExamples compile check: usage-guide recipes and Samples~/
 - `PackageRoot` defaults to the repository root and can point at another checkout:
   `dotnet test Tests/Tests.csproj -p:PackageRoot=/path/to/other/package`.
 - `GOLDEN_OUT=<file>` makes the golden scenario write its transcript; `../run-tests.sh --compare <ref>` does this for an
-  older version and for the current one and diffs them. For a version from before the types moved into
-  `VcuSwimLab.VREmotionDetection` it passes `-p:LegacyGlobalNamespace=true`.
+  older version and for the current one and diffs them. For a version from before the types moved into a namespace
+  it passes `-p:LegacyGlobalNamespace=true`; for a version with an older namespace prefix it renames that prefix to
+  `VcuSeCenter` in its temporary copy of that version.
 - `Fixtures/released_calibration.json` is a file written by an earlier release; it is copied next to the test assembly.
 - Tests share static stand-in state (`Time.Override`, `Worker.*`, `UnityWebRequest.Handler`, `Debug.Logs`), so they must
   not run in parallel.

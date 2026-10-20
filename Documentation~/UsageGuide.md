@@ -124,8 +124,8 @@ Package Manager*, add a scoped registry with name `OpenUPM`, URL `https://packag
 scope `com.vcu-swim-lab`, then install the package from *Package Manager → My Registries*. All its
 other dependencies come from Unity's own registry.
 
-All the package's types live in the namespace `VcuSwimLab.VREmotionDetection`: start every script
-that uses them with `using VcuSwimLab.VREmotionDetection;`.
+All the package's types live in the namespace `VcuSeCenter.VREmotionDetection`: start every script
+that uses them with `using VcuSeCenter.VREmotionDetection;`.
 
 **Samples:** in the Package Manager select *VR Emotion Detector*, open the **Samples** tab and
 **Import** one: *Basic Usage*, *Movement Calibration*, *Calibration Check*, *Jev Prediction*.
@@ -141,7 +141,7 @@ that uses them with `using VcuSwimLab.VREmotionDetection;`.
 
 | Field | Default | What it does |
 |---|---|---|
-| **Face Model** | filled in automatically with `sparseVR_teacher_model_acted_only_vol-aug-k1.onnx` | the local model. If it is empty, drag that file from the package's `Runtime/Models` folder. Leave it empty only if you will use Jev alone |
+| **Face Model** | filled in automatically with `sparseVR_teacher_model_acted_only_vol-aug-k1_v2_seed42.onnx` | the local model. If it is empty, drag that file from the package's `Runtime/Models` folder. Leave it empty only if you will use Jev alone |
 | **Use Calibration** | off | switches calibration on. You can also set `predictor.UseCalibration = true` in code |
 | **Save Results** | on | writes every prediction to a CSV file on the headset (see [Results files](#13-results-files)) |
 
@@ -155,7 +155,7 @@ Add this script to the same GameObject and press Play on the headset (or Quest L
 
 ```csharp
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class FirstPrediction : MonoBehaviour
@@ -250,7 +250,7 @@ The simplest setup. Nothing to configure: Local model is the default.
 
 ```csharp
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class LocalModelExample : MonoBehaviour
@@ -300,7 +300,7 @@ The order: **choose backend → calibration on → load a saved one, otherwise c
 
 ```csharp
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class LocalModelCalibratedExample : MonoBehaviour
@@ -376,8 +376,8 @@ its own.
 
 ```csharp
 using UnityEngine;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class JevExample : MonoBehaviour
@@ -436,8 +436,8 @@ a network request per sample.
 
 ```csharp
 using UnityEngine;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class JevCalibratedExample : MonoBehaviour
@@ -528,9 +528,9 @@ selected**; the predictor keeps using the local model.
 
 ```csharp
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class CompareBackendsExample : MonoBehaviour
@@ -592,8 +592,8 @@ Two ways to hear about problems: look at each outcome, and/or subscribe to the e
 
 ```csharp
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.VREmotionDetection;
 
 [RequireComponent(typeof(NewFaceAuModel))]
 public class FailureHandlingExample : MonoBehaviour
@@ -923,12 +923,12 @@ its own `.gitignore` because the files describe real people. Needs Unity's Andro
 ## 14. Write your own backend
 
 A backend turns a window of face data into seven scores. Implement `IEmotionBackend`
-(`VcuSwimLab.Backends`) and pass it to `UseBackend`:
+(`VcuSeCenter.Backends`) and pass it to `UseBackend`:
 
 ```csharp
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.VREmotionDetection;
 
 public sealed class AlwaysNeutralBackend : IEmotionBackend
 {
@@ -958,7 +958,7 @@ public sealed class AlwaysNeutralBackend : IEmotionBackend
 predictor.UseBackend(new AlwaysNeutralBackend());
 ```
 
-If this example is in a custom assembly definition, reference `VcuSwimLab.Backends` and
+If this example is in a custom assembly definition, reference `VcuSeCenter.Backends` and
 `VREmotionDetection` and keep Unity engine references enabled. The runtime reference is needed
 for `Emotion.Neutral`; see [backend dependency guidance](./Backends.md#writing-a-backend).
 

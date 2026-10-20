@@ -1,10 +1,10 @@
 {
-    "name": "VcuSwimLab.Backends.SparseVr",
-    "rootNamespace": "VcuSwimLab.Backends.SparseVr",
+    "name": "VcuSeCenter.Backends.Jev",
+    "rootNamespace": "VcuSeCenter.Backends.Jev",
     "references": [
-        "VcuSwimLab.Backends",
-        "VcuSwimLab.Calibration",
-        "Unity.InferenceEngine"
+        "VcuSeCenter.Backends",
+        "VcuSeCenter.Calibration",
+        "Unity.Nuget.Newtonsoft-Json"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

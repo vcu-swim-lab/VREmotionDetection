@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Unity.InferenceEngine;
 using UnityEngine;
 #if !LEGACY_GLOBAL_NAMESPACE
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 #endif
 
 internal sealed class HarnessRig : IDisposable

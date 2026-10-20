@@ -1,8 +1,8 @@
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEditor;
-using VcuSwimLab.Backends.SparseVr;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends.SparseVr;
+using VcuSeCenter.VREmotionDetection;
 
 public class ModelPreparationTests
 {
@@ -44,7 +44,7 @@ public class ModelPreparationTests
     [Test]
     public void FaceModel_WithoutAppendedSoftmax_OutputsProbabilities()
     {
-        var asset = LoadAsset("sparseVR_teacher_model_acted_only_vol-aug-k1.onnx");
+        var asset = LoadAsset("sparseVR_teacher_model_acted_only_vol-aug-k1_v2_seed42.onnx");
 
         var model = OnnxModelLoader.Prepare(asset, appendSoftmax: false);
         var scores = RunOnZeros(model, new TensorShape(1, 5, 70));

@@ -3,8 +3,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
 
 // JevOptions.LogRequests: one Console line per request (status, time, attempt), without the key.
 public class JevRequestLogTests

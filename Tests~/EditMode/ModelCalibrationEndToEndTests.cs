@@ -3,11 +3,11 @@ using System;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEditor;
-using VcuSwimLab.Backends.SparseVr;
-using VcuSwimLab.Calibration;
+using VcuSeCenter.Backends.SparseVr;
+using VcuSeCenter.Calibration;
 
 using Random = System.Random;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 public class ModelCalibrationEndToEndTests
 {

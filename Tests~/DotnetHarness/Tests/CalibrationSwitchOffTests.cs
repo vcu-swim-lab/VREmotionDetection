@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEngine;
-using VcuSwimLab.Backends.Jev;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends.Jev;
+using VcuSeCenter.VREmotionDetection;
 
 // Setting UseCalibration to false stops a calibration that is running - wherever it is (a prompt, the wait between
 // samples, a Jev request, a Jev retry delay) - instead of letting it finish with calibration switched off. Only the

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace VcuSwimLab.Calibration
+namespace VcuSeCenter.Calibration
 {
     public sealed class MovementCalibrator
     {

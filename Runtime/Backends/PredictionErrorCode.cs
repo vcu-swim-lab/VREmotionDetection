@@ -1,4 +1,4 @@
-namespace VcuSwimLab.Backends
+namespace VcuSeCenter.Backends
 {
     public enum PredictionErrorCode
     {

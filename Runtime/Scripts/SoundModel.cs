@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using Unity.InferenceEngine;
-using VcuSwimLab.Backends.SparseVr;
+using VcuSeCenter.Backends.SparseVr;
 using Unity.Collections;
 using UnityEngine;
 using System.Collections.Generic;
 
 using Debug = UnityEngine.Debug;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     public class SoundModel : MonoBehaviour
     {

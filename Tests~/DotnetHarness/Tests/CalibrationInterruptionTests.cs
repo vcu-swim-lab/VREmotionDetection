@@ -3,8 +3,8 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.VREmotionDetection;
 
 // Since 3.0.0 a calibration that is stopped by ClearCalibration, a backend switch or a disable ends with an
 // explanatory CalibrationError wherever it was (not only inside a prediction), and an old run never writes its

@@ -5,7 +5,7 @@ using System.IO;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 // Small helpers for the tests that must prove something does NOT hang or does NOT keep going.
 internal static class TestHelpers

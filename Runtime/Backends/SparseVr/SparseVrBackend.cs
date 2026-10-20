@@ -3,7 +3,7 @@ using System.Linq;
 using Unity.InferenceEngine;
 using UnityEngine;
 
-namespace VcuSwimLab.Backends.SparseVr
+namespace VcuSeCenter.Backends.SparseVr
 {
     public sealed class SparseVrBackend : IEmotionBackend
     {

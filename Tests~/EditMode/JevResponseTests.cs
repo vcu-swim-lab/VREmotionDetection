@@ -1,8 +1,8 @@
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
 
 public class JevResponseTests
 {

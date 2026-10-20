@@ -3,8 +3,8 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.VREmotionDetection;
 
 // Harness-only: ResultsRecorder reads its folder from Application.persistentDataPath, which a Unity EditMode test
 // cannot set (the old ResultsRecorder(folder) constructor is gone), but the harness stub can.

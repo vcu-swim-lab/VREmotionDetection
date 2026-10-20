@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Unity.InferenceEngine;
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.VREmotionDetection;
 
 // A prediction that is still waiting when the backend changes or the predictor is disabled ends as Canceled, and the
 // predictor leaves no trace of it: no LastError, no PredictionFailed, no warning, no row in the results file.

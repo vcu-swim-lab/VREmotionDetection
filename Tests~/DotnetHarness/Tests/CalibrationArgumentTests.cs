@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 // CalibrateEmotion and CalibrateAll follow one contract: with calibration off they return false; otherwise a bad
 // interval (negative, NaN, infinite) or attempt count (below 1) throws ArgumentOutOfRangeException - and a rejected

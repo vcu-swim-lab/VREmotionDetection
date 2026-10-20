@@ -3,12 +3,12 @@
 ## Assemblies
 
 ```
-VcuSwimLab.Calibration          plain C#, no Unity: the calibration maths
+VcuSeCenter.Calibration         plain C#, no Unity: the calibration maths
         ^
-VcuSwimLab.Backends             contracts: IEmotionBackend, BackendRequest, BackendResult,
+VcuSeCenter.Backends            contracts: IEmotionBackend, BackendRequest, BackendResult,
         ^   ^                   PredictionError, PredictionErrorCode, ScoreValidation, WindowValidation
         |   |
-VcuSwimLab.Backends.SparseVr    VcuSwimLab.Backends.Jev
+VcuSeCenter.Backends.SparseVr   VcuSeCenter.Backends.Jev
 (bundled ONNX model)            (Typesafe Jev over HTTPS)
         ^                       ^
         +-----------+-----------+
@@ -20,14 +20,14 @@ Arrows point from a dependency to the assembly that uses it. The two backend ass
 
 | Assembly | Folder | What it owns |
 |---|---|---|
-| `VcuSwimLab.Calibration` | `Runtime/Calibration` | `CalibrationMath`, `MovementCalibrator`, the two centroid builders, `CalibrationProfile` |
-| `VcuSwimLab.Backends` | `Runtime/Backends` | the backend contract and the error vocabulary |
-| `VcuSwimLab.Backends.SparseVr` | `Runtime/Backends/SparseVr` | `SparseVrBackend`, `OnnxModelLoader`, `WindowTensor` |
-| `VcuSwimLab.Backends.Jev` | `Runtime/Backends/Jev` | `JevBackend`, `JevOptions`, the HTTP seam, the prompt and request building |
+| `VcuSeCenter.Calibration` | `Runtime/Calibration` | `CalibrationMath`, `MovementCalibrator`, the two centroid builders, `CalibrationProfile` |
+| `VcuSeCenter.Backends` | `Runtime/Backends` | the backend contract and the error vocabulary |
+| `VcuSeCenter.Backends.SparseVr` | `Runtime/Backends/SparseVr` | `SparseVrBackend`, `OnnxModelLoader`, `WindowTensor` |
+| `VcuSeCenter.Backends.Jev` | `Runtime/Backends/Jev` | `JevBackend`, `JevOptions`, the HTTP seam, the prompt and request building |
 | `VREmotionDetection` | `Runtime/Scripts` | `NewFaceAuModel`, `DeviceManager` and devices, `FacePrediction`, `CalibrationStore`, `ResultsRecorder`, `FaceAuModel` (obsolete), `SoundModel` (unfinished) |
 | `VREmotionDetection.Editor` | `Editor` | the menu that copies results from a headset |
 
-Runtime types such as `NewFaceAuModel`, `FacePrediction`, `Emotion`, `DeviceManager`, and `RingBuffer<T>` use the `VcuSwimLab.VREmotionDetection` namespace. Add `using VcuSwimLab.VREmotionDetection;` when using them. Backend and calibration types have their own `VcuSwimLab.*` namespaces. See [Migration](Migration.md) for upgrading older code.
+Runtime types such as `NewFaceAuModel`, `FacePrediction`, `Emotion`, `DeviceManager`, and `RingBuffer<T>` use the `VcuSeCenter.VREmotionDetection` namespace. Add `using VcuSeCenter.VREmotionDetection;` when using them. Backend and calibration types have their own `VcuSeCenter.*` namespaces. See [Migration](Migration.md) for upgrading older code.
 
 ## A prediction, step by step
 

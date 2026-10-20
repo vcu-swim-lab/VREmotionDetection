@@ -1,6 +1,6 @@
 using UnityEngine;
-using VcuSwimLab.Backends;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Backends;
+using VcuSeCenter.VREmotionDetection;
 
 public sealed class AlwaysNeutralBackend : IEmotionBackend
 {

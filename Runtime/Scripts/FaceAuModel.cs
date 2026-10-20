@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using Unity.InferenceEngine;
-using VcuSwimLab.Backends.SparseVr;
+using VcuSeCenter.Backends.SparseVr;
 using Unity.Collections;
 using UnityEngine;
 using System.Collections.Generic;
 
 using Debug = UnityEngine.Debug;
 
-namespace VcuSwimLab.VREmotionDetection
+namespace VcuSeCenter.VREmotionDetection
 {
     [System.Obsolete("Use NewFaceAuModel, which runs the acted-data model and supports calibration.")]
     [RequireComponent(typeof(OVRFaceExpressions))]

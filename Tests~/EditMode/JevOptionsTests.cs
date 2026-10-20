@@ -1,6 +1,6 @@
 using System;
 using NUnit.Framework;
-using VcuSwimLab.Backends.Jev;
+using VcuSeCenter.Backends.Jev;
 
 public class JevOptionsTests
 {

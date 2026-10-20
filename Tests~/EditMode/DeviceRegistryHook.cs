@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.VREmotionDetection;
 
 // DeviceRegistry.Replace was an internal test seam; it was removed from the shipped package (214fe73).
 // The registry itself is unchanged - a private static dictionary of factories - so the tests reach it the

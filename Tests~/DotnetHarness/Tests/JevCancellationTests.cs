@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.Networking;
-using VcuSwimLab.Backends;
-using VcuSwimLab.Backends.Jev;
+using VcuSeCenter.Backends;
+using VcuSeCenter.Backends.Jev;
 
 // PredictionErrorCode.Canceled, ICancelableBackend and ICancelableHttpTransport: a request that is still waiting when
 // the predictor switches backend or is disabled is aborted and ends as Canceled (added after the baseline).

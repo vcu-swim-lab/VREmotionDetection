@@ -3,8 +3,8 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
-using VcuSwimLab.Calibration;
-using VcuSwimLab.VREmotionDetection;
+using VcuSeCenter.Calibration;
+using VcuSeCenter.VREmotionDetection;
 
 public class CalibrationStoreTests
 {

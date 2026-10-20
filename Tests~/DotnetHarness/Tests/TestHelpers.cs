@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
@@ -27,6 +29,21 @@ internal static class TestHelpers
             Assert.Less(clock.ElapsedMilliseconds, milliseconds, because);
             await Task.Delay(2);
         }
+    }
+
+    // The results recorder keeps its file open for writing during a session, and Windows refuses a reader (such as
+    // File.ReadAllLines) that does not share write access with it.
+    public static string[] ReadAllLinesShared(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        var lines = new List<string>();
+        for (string line; (line = reader.ReadLine()) != null;)
+        {
+            lines.Add(line);
+        }
+
+        return lines.ToArray();
     }
 
     // The prompt of a calibration: shows the face and the model answer that belong to the emotion, tells the test which

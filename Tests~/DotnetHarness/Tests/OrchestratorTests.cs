@@ -120,7 +120,7 @@ public class OrchestratorTests
         StringAssert.Contains("API key", rig.Model.LastError.Value.Message);
         Assert.AreEqual(3, raised.Count);
         lock (Debug.Warnings) Assert.AreEqual(1, Debug.Warnings.Count(w => w.Contains("Unauthorized")));
-        var rows = File.ReadAllLines(rig.Model.ResultsFilePath);
+        var rows = TestHelpers.ReadAllLinesShared(rig.Model.ResultsFilePath);
         Assert.AreEqual(3, rows.Count(r => r.Contains(",backend_error,")));
         Assert.AreEqual(0, rows.Count(r => r.Contains("no_tracking")));
         Assert.AreEqual(3, transport.Calls);
@@ -228,7 +228,7 @@ public class OrchestratorTests
 
         Assert.AreEqual(PredictionErrorCode.NoTracking, outcome.Error.Value.Code);
         Assert.IsNull(await rig.Model.PredictDetailed(0.3f, saveResult: false));
-        StringAssert.EndsWith(",no_tracking,,,", File.ReadAllLines(rig.Model.ResultsFilePath).Last());
+        StringAssert.EndsWith(",no_tracking,,,", TestHelpers.ReadAllLinesShared(rig.Model.ResultsFilePath).Last());
     }
 
     [Test]

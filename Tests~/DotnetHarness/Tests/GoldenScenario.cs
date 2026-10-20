@@ -182,7 +182,7 @@ public class GoldenScenario
         stop.Cancel();
         await feeder;
 
-        string[] rows = File.ReadAllLines(model.ResultsFilePath);
+        string[] rows = TestHelpers.ReadAllLinesShared(model.ResultsFilePath);
         Add("csv", rows.Select(r => string.Join(",", r.Split(',').Skip(2))).ToArray());
         Add("summary", Regex.Replace(model.GetResultsSummary(), @"over \d+\.\d min", "over X min"));
 

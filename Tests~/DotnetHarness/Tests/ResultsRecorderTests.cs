@@ -39,7 +39,7 @@ public class ResultsRecorderTests
             recorder.Record(Emotion.Happiness, 0.81234f, true, Emotion.Surprise);
             recorder.Record(Emotion.Neutral, 0.5f, false, Emotion.Neutral);
 
-            var lines = File.ReadAllLines(recorder.FilePath);
+            var lines = TestHelpers.ReadAllLinesShared(recorder.FilePath);
 
             Assert.AreEqual("time_utc,seconds,emotion,confidence,calibrated,model_emotion", lines[0]);
             StringAssert.EndsWith(",Happiness,0.8123,yes,Surprise", lines[1]);
@@ -62,7 +62,7 @@ public class ResultsRecorderTests
             recorder.RecordFailure(PredictionErrorCode.NotConfigured);
             recorder.RecordFailure(PredictionErrorCode.Canceled);
 
-            var lines = File.ReadAllLines(recorder.FilePath);
+            var lines = TestHelpers.ReadAllLinesShared(recorder.FilePath);
 
             Assert.AreEqual(4, lines.Length);
             StringAssert.EndsWith(",no_tracking,,,", lines[1]);
